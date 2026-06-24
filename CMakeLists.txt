@@ -30,6 +30,8 @@ add_library(riffle_core
   src/adapters/reader.cpp
   src/adapters/simdjson_source.cpp
   src/app/convert.cpp
+  src/app/stats.cpp
+  src/cli/args.cpp
 )
 target_include_directories(riffle_core PUBLIC include)
 target_link_libraries(riffle_core
@@ -38,10 +40,10 @@ target_link_libraries(riffle_core
 )
 
 # ---------------------------------------------------------------------------
-# CLI executable (added in a later step)
+# CLI executable
 # ---------------------------------------------------------------------------
-# add_executable(riffle src/cli/main.cpp)
-# target_link_libraries(riffle PRIVATE riffle_core)
+add_executable(riffle src/cli/main.cpp)
+target_link_libraries(riffle PRIVATE riffle_core)
 
 # ---------------------------------------------------------------------------
 # Tests
@@ -61,6 +63,7 @@ add_executable(riffle_tests
   tests/adapters/reader_test.cpp
   tests/adapters/simdjson_source_test.cpp
   tests/app/convert_test.cpp
+  tests/cli/args_test.cpp
 )
 target_link_libraries(riffle_tests
   PRIVATE riffle_core GTest::gtest GTest::gtest_main GTest::gmock
