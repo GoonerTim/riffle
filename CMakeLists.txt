@@ -50,6 +50,7 @@ add_executable(riffle_tests
   tests/domain/factories_test.cpp
   tests/domain/type_resolve_test.cpp
   tests/domain/infer_schema_test.cpp
+  tests/domain/merge_override_test.cpp
 )
 target_link_libraries(riffle_tests
   PRIVATE riffle_core GTest::gtest GTest::gtest_main GTest::gmock

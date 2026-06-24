@@ -16,4 +16,7 @@ std::expected<ColumnType, std::string> resolve_type_conflict(std::span<const Col
 // Infer an output schema from up to INFER_SAMPLE_ROWS rows of the source.
 InferredSchema infer_schema(RowSource& source, TypeConflictPolicy policy);
 
+// Overlay an explicit schema onto an inferred one (replace by name, else append).
+InferredSchema merge_override(InferredSchema inferred, const InferredSchema& override);
+
 }  // namespace riffle

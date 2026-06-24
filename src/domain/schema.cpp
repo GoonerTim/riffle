@@ -55,4 +55,31 @@ InferredSchema infer_schema(RowSource& source, TypeConflictPolicy policy) {
     return build_schema(acc, policy, rows);
 }
 
+namespace {
+
+ColumnSchema* find_by_name(std::vector<ColumnSchema>& columns, const std::string& name) {
+    for (auto& column : columns) {
+        if (column.name == name) return &column;
+    }
+    return nullptr;
+}
+
+void apply_override(std::vector<ColumnSchema>& columns, const ColumnSchema& column) {
+    if (auto* existing = find_by_name(columns, column.name)) {
+        existing->type = column.type;
+        existing->nullable = column.nullable;
+        return;
+    }
+    columns.push_back(column);
+}
+
+}  // namespace
+
+InferredSchema merge_override(InferredSchema inferred, const InferredSchema& override) {
+    for (const auto& column : override.columns) {
+        apply_override(inferred.columns, column);
+    }
+    return make_InferredSchema(inferred);
+}
+
 }  // namespace riffle
