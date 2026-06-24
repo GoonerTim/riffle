@@ -1,8 +1,13 @@
 #pragma once
 
+#include <cstddef>
+#include <cstdint>
 #include <expected>
 #include <string>
 #include <string_view>
+#include <vector>
+
+#include "riffle/constants.hpp"
 
 namespace riffle {
 
@@ -36,5 +41,56 @@ std::expected<OnError, std::string> parse_on_error(std::string_view text);
 std::expected<TypeConflictPolicy, std::string> parse_type_conflict_policy(std::string_view text);
 std::expected<CompressionCodec, std::string> parse_compression_codec(std::string_view text);
 std::expected<OutputFormat, std::string> parse_output_format(std::string_view text);
+
+// ---------------------------------------------------------------------------
+// Value structures (immutable data; constructed via make_* factories).
+// ---------------------------------------------------------------------------
+
+// One output column.
+struct ColumnSchema {
+    std::string name;
+    ColumnType type{};
+    bool nullable = true;
+    std::string json_path;  // defaults to name
+};
+
+// Ordered set of columns plus inference diagnostics.
+struct InferredSchema {
+    std::vector<ColumnSchema> columns;
+    std::size_t sampled_rows = 0;
+    bool had_conflicts = false;
+};
+
+// Parameters of one conversion run.
+struct Config {
+    std::vector<std::string> inputs;
+    std::string output_path;
+    OutputFormat output_format = OutputFormat::PARQUET;
+    InferredSchema schema_override;  // empty → infer
+    CompressionCodec compression = CompressionCodec::ZSTD;
+    std::size_t batch_rows = DEFAULT_BATCH_ROWS;
+    OnError on_error = OnError::SKIP;
+    TypeConflictPolicy type_conflict = TypeConflictPolicy::WIDEN;
+    bool emit_stats = false;
+};
+
+// One rejected input line (collected under OnError::COLLECT).
+struct ParseError {
+    std::size_t line_no = 0;
+    std::string reason;
+    std::string raw;
+};
+
+// Outcome of a conversion run.
+struct ConvertStats {
+    std::size_t rows_read = 0;
+    std::size_t rows_written = 0;
+    std::size_t rows_skipped = 0;
+    std::size_t bytes_in = 0;
+    std::size_t bytes_out = 0;
+    std::uint64_t elapsed_ms = 0;
+    PipelineState final_state = PipelineState::INIT;
+    std::vector<ParseError> errors;
+};
 
 }  // namespace riffle
