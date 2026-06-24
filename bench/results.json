@@ -1,66 +1,66 @@
 [
   {
     "tool": "riffle",
-    "seconds": 1.525,
-    "seconds_best": 1.524,
-    "throughput_mb_s": 78.4,
-    "peak_rss_mb": 74.2,
+    "seconds": 1.492,
+    "seconds_best": 1.474,
+    "throughput_mb_s": 81.1,
+    "peak_rss_mb": 79.1,
     "dataset": "1M rows (120 MB)"
   },
   {
     "tool": "duckdb",
     "seconds": 0.338,
-    "seconds_best": 0.335,
-    "throughput_mb_s": 356.8,
-    "peak_rss_mb": 217.2,
+    "seconds_best": 0.334,
+    "throughput_mb_s": 358.2,
+    "peak_rss_mb": 218.8,
     "dataset": "1M rows (120 MB)"
   },
   {
     "tool": "pyarrow",
-    "seconds": 0.464,
-    "seconds_best": 0.45,
-    "throughput_mb_s": 265.9,
-    "peak_rss_mb": 379.4,
+    "seconds": 0.438,
+    "seconds_best": 0.423,
+    "throughput_mb_s": 282.7,
+    "peak_rss_mb": 391.8,
     "dataset": "1M rows (120 MB)"
   },
   {
     "tool": "pandas",
-    "seconds": 3.376,
-    "seconds_best": 3.297,
-    "throughput_mb_s": 36.3,
-    "peak_rss_mb": 1433.2,
+    "seconds": 3.305,
+    "seconds_best": 3.244,
+    "throughput_mb_s": 36.8,
+    "peak_rss_mb": 1445.1,
     "dataset": "1M rows (120 MB)"
   },
   {
     "tool": "riffle",
-    "seconds": 4.452,
-    "seconds_best": 4.431,
-    "throughput_mb_s": 80.9,
-    "peak_rss_mb": 77.0,
+    "seconds": 4.404,
+    "seconds_best": 4.29,
+    "throughput_mb_s": 83.6,
+    "peak_rss_mb": 82.8,
     "dataset": "3M rows (359 MB)"
   },
   {
     "tool": "duckdb",
-    "seconds": 0.615,
-    "seconds_best": 0.605,
-    "throughput_mb_s": 592.7,
-    "peak_rss_mb": 493.8,
+    "seconds": 0.628,
+    "seconds_best": 0.602,
+    "throughput_mb_s": 595.4,
+    "peak_rss_mb": 499.8,
     "dataset": "3M rows (359 MB)"
   },
   {
     "tool": "pyarrow",
-    "seconds": 0.962,
-    "seconds_best": 0.948,
-    "throughput_mb_s": 378.4,
-    "peak_rss_mb": 811.5,
+    "seconds": 0.944,
+    "seconds_best": 0.915,
+    "throughput_mb_s": 392.1,
+    "peak_rss_mb": 813.5,
     "dataset": "3M rows (359 MB)"
   },
   {
     "tool": "pandas",
-    "seconds": 8.898,
-    "seconds_best": 8.776,
-    "throughput_mb_s": 40.9,
-    "peak_rss_mb": 4186.8,
+    "seconds": 9.318,
+    "seconds_best": 8.893,
+    "throughput_mb_s": 40.3,
+    "peak_rss_mb": 4186.5,
     "dataset": "3M rows (359 MB)"
   }
 ]

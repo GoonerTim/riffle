@@ -36,7 +36,7 @@ Converting the same JSON-lines dataset to Parquet, Riffle vs. the common Python 
 
 ![Peak memory comparison](docs/img/bench_memory.png)
 
-Riffle streams in **constant memory**: its peak stays at **~75 MB whether the input is 120 MB
+Riffle streams in **constant memory**: its peak stays at **~80 MB whether the input is 120 MB
 or 359 MB**. The others load the whole file (or large intermediates): pandas peaks at **4.2 GB
 on a 359 MB input (~12×)**, pyarrow at ~810 MB, duckdb at ~490 MB and growing with input size.
 That flat line is why Riffle converts files **larger than RAM** on a laptop where the others OOM.
@@ -45,16 +45,17 @@ That flat line is why Riffle converts files **larger than RAM** on a laptop wher
 
 ![Throughput comparison](docs/img/bench_throughput.png)
 
-Riffle is **not** the throughput leader. DuckDB (~360–590 MB/s) and PyArrow (~270–380 MB/s) are
-faster; Riffle sustains **~80 MB/s**, ahead of pandas (~40 MB/s). Riffle's throughput is
-parse/build-bound today (simdjson DOM API + per-cell Arrow appends) and has clear headroom;
-compression codec barely moves it.
+Riffle is **not** the throughput leader. DuckDB (~360–595 MB/s) and PyArrow (~280–390 MB/s) are
+faster; Riffle sustains **~80 MB/s**, ahead of pandas (~40 MB/s). Parsing already uses the
+simdjson **on-demand** API and Arrow appends are **batched** per column; the remaining cost is
+per-row materialization (string allocations for flattened paths/values and per-line buffer
+copies), not JSON parsing or Arrow append. Compression codec barely moves it.
 
 ### Where Riffle wins / where it doesn't
 
 | Criterion                          | Riffle                | duckdb | pyarrow | pandas |
 | ---------------------------------- | --------------------- | ------ | ------- | ------ |
-| Peak memory, flat with input size  | ✅ ~75 MB, constant    | ⚠️ grows | ❌ grows | ❌ huge |
+| Peak memory, flat with input size  | ✅ ~80 MB, constant    | ⚠️ grows | ❌ grows | ❌ huge |
 | Converts files larger than RAM     | ✅                     | ⚠️      | ❌       | ❌      |
 | Raw throughput                     | ⚠️ ~80 MB/s            | ✅      | ✅       | ❌      |
 | Single static binary, no runtime   | ✅                     | ❌ (lib) | ❌ (lib) | ❌ (lib) |
