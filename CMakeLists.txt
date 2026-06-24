@@ -82,7 +82,7 @@ add_executable(riffle_tests
   tests/cli/args_test.cpp
 )
 target_link_libraries(riffle_tests
-  PRIVATE riffle_core GTest::gtest GTest::gtest_main GTest::gmock
+  PRIVATE riffle_core GTest::gtest GTest::gtest_main
 )
 
 include(GoogleTest)
