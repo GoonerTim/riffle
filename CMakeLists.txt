@@ -32,6 +32,7 @@ add_library(riffle_core
   src/adapters/columnar_raw_writer.cpp
   src/adapters/reader.cpp
   src/adapters/simdjson_source.cpp
+  src/adapters/schema_json.cpp
   src/app/convert.cpp
   src/app/stats.cpp
   src/cli/args.cpp
@@ -62,6 +63,7 @@ add_executable(riffle_tests
   tests/domain/infer_schema_test.cpp
   tests/domain/merge_override_test.cpp
   tests/domain/timestamp_test.cpp
+  tests/domain/schema_json_test.cpp
   tests/adapters/batch_test.cpp
   tests/adapters/parquet_writer_test.cpp
   tests/adapters/columnar_raw_writer_test.cpp

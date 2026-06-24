@@ -3,6 +3,7 @@
 #include <stdexcept>
 
 #include "riffle/factories.hpp"
+#include "riffle/schema_json.hpp"
 
 namespace riffle {
 namespace {
@@ -10,7 +11,14 @@ namespace {
 bool is_value_option(std::string_view token) {
     return token == "-o" || token == "--output" || token == "--format" ||
            token == "--compression" || token == "--on-error" ||
-           token == "--type-conflict" || token == "--batch-rows";
+           token == "--type-conflict" || token == "--batch-rows" || token == "--schema";
+}
+
+std::expected<void, std::string> set_schema(Config& draft, const std::string& path) {
+    auto schema = load_schema_file(path);
+    if (!schema) return std::unexpected(schema.error());
+    draft.schema_override = *schema;
+    return {};
 }
 
 template <class T, class E>
@@ -43,6 +51,7 @@ std::expected<void, std::string> apply_value(Config& draft, std::string_view key
         draft.output_path = value;
         return {};
     }
+    if (key == "--schema") return set_schema(draft, value);
     if (key == "--batch-rows") return set_batch_rows(draft, value);
     return apply_enum(draft, key, value);
 }

@@ -3,6 +3,7 @@
 
 #include <gtest/gtest.h>
 
+#include <fstream>
 #include <string>
 #include <vector>
 
@@ -48,6 +49,19 @@ TEST(ParseArgs, UnknownOptionIsError) {
 
 TEST(ParseArgs, RejectsBadEnumValue) {
     EXPECT_FALSE(parse({"in.jsonl", "-o", "o.parquet", "--compression", "lz9"}).has_value());
+}
+
+TEST(ParseArgs, LoadsSchemaOverrideFromFile) {
+    std::string path = ::testing::TempDir() + "schema_arg.json";
+    std::ofstream(path) << R"({"columns":[{"name":"id","type":"string"}]})";
+    auto cfg = parse({"in.jsonl", "-o", "o.parquet", "--schema", path});
+    ASSERT_TRUE(cfg.has_value());
+    ASSERT_EQ(cfg->schema_override.columns.size(), 1u);
+    EXPECT_EQ(cfg->schema_override.columns[0].type, ColumnType::STRING);
+}
+
+TEST(ParseArgs, RejectsMissingSchemaFile) {
+    EXPECT_FALSE(parse({"in.jsonl", "-o", "o.parquet", "--schema", "/no/such.json"}).has_value());
 }
 
 }  // namespace riffle

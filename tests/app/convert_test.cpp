@@ -62,6 +62,17 @@ TEST(Convert, CollectsErrorsWhenRequested) {
     EXPECT_EQ(stats.errors[0].line_no, 2u);
 }
 
+TEST(Convert, SchemaOverrideForcesColumnType) {
+    auto in = write_file("c_ov.jsonl", "{\"code\":200}\n{\"code\":404}\n");
+    auto out = ::testing::TempDir() + "c_ov.parquet";
+    auto cfg = config_for(in, out);
+    cfg.schema_override.columns = {{"code", ColumnType::STRING, true, "code"}};
+    auto stats = convert(cfg);
+    EXPECT_EQ(stats.final_state, PipelineState::DONE);
+    auto table = read_parquet(out);
+    EXPECT_EQ(table->schema()->field(0)->type()->id(), arrow::Type::STRING);
+}
+
 TEST(Convert, AutoWidensIntToDoubleBeyondSample) {
     std::string body;
     for (int i = 0; i < 10001; ++i) body += "{\"v\":1}\n";  // exceeds INFER_SAMPLE_ROWS
