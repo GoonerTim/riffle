@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstddef>
+#include <cstdint>
 #include <expected>
 #include <memory>
 #include <string>
@@ -9,17 +10,21 @@
 #include "riffle/types.hpp"
 
 namespace arrow {
-class ArrayBuilder;
 class RecordBatch;
 class Schema;
 }  // namespace arrow
 
 namespace riffle {
 
-// Hot-path accumulator for one column (mutable, reused across batches).
+// Hot-path accumulator for one column: native values are appended per row and
+// bulk-converted to an Arrow array once per batch. Only the buffer matching the
+// column's type is populated (ints also hold TIMESTAMP micros and BOOL 0/1).
 struct ColumnBuilder {
     ColumnSchema schema;
-    std::shared_ptr<arrow::ArrayBuilder> builder;
+    std::vector<std::int64_t> ints;
+    std::vector<double> doubles;
+    std::vector<std::string> strings;
+    std::vector<std::uint8_t> valid;  // 1 = present, 0 = null
     std::size_t null_count = 0;
 };
 
