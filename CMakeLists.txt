@@ -28,6 +28,8 @@ add_library(riffle_core
   src/domain/timestamp.cpp
   src/adapters/batch.cpp
   src/adapters/parquet_writer.cpp
+  src/adapters/writer.cpp
+  src/adapters/columnar_raw_writer.cpp
   src/adapters/reader.cpp
   src/adapters/simdjson_source.cpp
   src/app/convert.cpp
@@ -62,6 +64,7 @@ add_executable(riffle_tests
   tests/domain/timestamp_test.cpp
   tests/adapters/batch_test.cpp
   tests/adapters/parquet_writer_test.cpp
+  tests/adapters/columnar_raw_writer_test.cpp
   tests/adapters/reader_test.cpp
   tests/adapters/simdjson_source_test.cpp
   tests/app/convert_test.cpp

@@ -1,8 +1,10 @@
-#include "riffle/writer.hpp"
+#include "riffle/writer_backends.hpp"
 
 #include <arrow/api.h>
 #include <arrow/io/file.h>
 #include <parquet/arrow/writer.h>
+
+#include "riffle/writer.hpp"
 
 namespace riffle {
 namespace {
@@ -43,8 +45,10 @@ private:
     std::shared_ptr<arrow::io::FileOutputStream> sink_;
 };
 
-std::expected<std::unique_ptr<Writer>, std::string> open_parquet(const Config& config,
-                                                                 const InferredSchema& schema) {
+}  // namespace
+
+std::expected<std::unique_ptr<Writer>, std::string> open_parquet_writer(
+    const Config& config, const InferredSchema& schema) {
     auto sink = arrow::io::FileOutputStream::Open(config.output_path);
     if (!sink.ok()) return std::unexpected(sink.status().ToString());
     auto writer = parquet::arrow::FileWriter::Open(*arrow_schema_of(schema),
@@ -52,16 +56,6 @@ std::expected<std::unique_ptr<Writer>, std::string> open_parquet(const Config& c
                                                    make_props(config.compression));
     if (!writer.ok()) return std::unexpected(writer.status().ToString());
     return std::make_unique<ParquetWriter>(std::move(*writer), *sink);
-}
-
-}  // namespace
-
-std::expected<std::unique_ptr<Writer>, std::string> open_writer(const Config& config,
-                                                                const InferredSchema& schema) {
-    if (config.output_format != OutputFormat::PARQUET) {
-        return std::unexpected("only parquet output is implemented");
-    }
-    return open_parquet(config, schema);
 }
 
 }  // namespace riffle

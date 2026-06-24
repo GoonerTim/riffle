@@ -28,10 +28,10 @@ See the full design in [`docs/riffle.md`](docs/riffle.md).
 
 ## Status
 
-🚧 **Working MVP.** JSON-lines → Parquet conversion works end-to-end (library + CLI),
-built test-first with ~56 tests. C++23. Schema is inferred; nested objects are flattened.
-Known limitations: timestamp inference and `columnar-raw` output are not implemented yet,
-and `--schema` override is library-only for now.
+🚧 **Working MVP.** JSON-lines → Parquet (and `columnar-raw`) conversion works end-to-end
+(library + CLI), built test-first with ~68 tests. C++23. Schema is inferred (including
+ISO-8601 timestamps); nested objects are flattened. Known limitations: `--schema` override
+is library-only for now, and type widening covers int→double only (no cross-sample widening).
 
 ## Quick start
 
