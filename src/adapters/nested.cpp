@@ -147,7 +147,8 @@ std::expected<void, std::string> append_double(arrow::ArrayBuilder* builder, dom
     double out = 0;
     if (value.get(out) == simdjson::SUCCESS) return check(typed->Append(out));
     std::int64_t whole = 0;
-    if (value.get(whole) == simdjson::SUCCESS) return check(typed->Append(static_cast<double>(whole)));
+    if (value.get(whole) == simdjson::SUCCESS)
+        return check(typed->Append(static_cast<double>(whole)));
     return check(typed->AppendNull());
 }
 
@@ -232,8 +233,7 @@ std::expected<void, std::string> append_object(arrow::RecordBatchBuilder& builde
 
 }  // namespace
 
-std::expected<NestedType, std::string> infer_nested_schema(
-    const std::vector<std::string>& sample) {
+std::expected<NestedType, std::string> infer_nested_schema(const std::vector<std::string>& sample) {
     dom::parser parser;
     NestedType top = scalar(Kind::Struct);
     for (const auto& line : sample) {
