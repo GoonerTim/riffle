@@ -2,6 +2,7 @@
 
 #include <arrow/api.h>
 #include <arrow/io/file.h>
+#include <arrow/util/config.h>
 #include <gtest/gtest.h>
 #include <parquet/arrow/reader.h>
 
@@ -23,7 +24,11 @@ std::string write_file(const std::string& name, const std::string& body) {
 std::shared_ptr<arrow::Table> read_parquet(const std::string& path) {
     auto infile = arrow::io::ReadableFile::Open(path).ValueOrDie();
     std::unique_ptr<parquet::arrow::FileReader> reader;
+#if ARROW_VERSION_MAJOR >= 19
+    reader = parquet::arrow::OpenFile(infile, arrow::default_memory_pool()).ValueOrDie();
+#else
     (void)parquet::arrow::OpenFile(infile, arrow::default_memory_pool(), &reader);
+#endif
     std::shared_ptr<arrow::Table> table;
     (void)reader->ReadTable(&table);
     return table;
