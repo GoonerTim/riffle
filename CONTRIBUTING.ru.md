@@ -24,9 +24,9 @@
 
 ```bash
 # Зависимости (Debian/Ubuntu)
-apt-get install -y build-essential cmake git \
-    libarrow-dev libparquet-dev libzstd-dev libsnappy-dev
-git clone https://github.com/simdjson/simdjson third_party/simdjson
+apt-get install -y build-essential cmake ninja-build \
+    libarrow-dev libparquet-dev libzstd-dev libsnappy-dev \
+    libsimdjson-dev libgtest-dev
 
 # Сборка и тесты через task-runner
 just build
@@ -38,7 +38,7 @@ just test
 
 ## Правила кода
 
-- **Язык:** C++20.
+- **Язык:** C++23 (используется `std::expected`).
 - **Стиль: functional core, imperative shell.** Предпочитайте свободные функции
   классам-оркестраторам; моделируйте данные как неизменяемые value-структуры, создаваемые
   фабриками `make_*`. Мутабельность допустима **только** на горячем пути (буферы чтения,

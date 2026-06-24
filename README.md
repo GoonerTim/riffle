@@ -28,8 +28,10 @@ See the full design in [`docs/riffle.md`](docs/riffle.md).
 
 ## Status
 
-⚠️ **Early stage.** The specification ([`docs/riffle.md`](docs/riffle.md)) is complete;
-implementation is in progress. APIs and flags may change.
+🚧 **Working MVP.** JSON-lines → Parquet conversion works end-to-end (library + CLI),
+built test-first with ~56 tests. C++23. Schema is inferred; nested objects are flattened.
+Known limitations: timestamp inference and `columnar-raw` output are not implemented yet,
+and `--schema` override is library-only for now.
 
 ## Quick start
 
@@ -38,15 +40,12 @@ implementation is in progress. APIs and flags may change.
 ```bash
 # Debian/Ubuntu system packages
 apt-get update && apt-get install -y \
-    build-essential cmake git \
-    libarrow-dev libparquet-dev \
-    libzstd-dev libsnappy-dev
-
-# simdjson (header-only) as a submodule
-git clone https://github.com/simdjson/simdjson third_party/simdjson
+    build-essential cmake ninja-build \
+    libarrow-dev libparquet-dev libzstd-dev libsnappy-dev \
+    libsimdjson-dev libgtest-dev
 
 # Build
-cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j
 ```
 

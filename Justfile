@@ -10,12 +10,8 @@ jobs       := num_cpus()
 default:
     @just --list
 
-# Fetch header-only dependencies (simdjson) into third_party/
-deps:
-    test -d third_party/simdjson || git clone --depth 1 https://github.com/simdjson/simdjson third_party/simdjson
-
-# Configure the CMake build
-configure: deps
+# Configure the CMake build (Arrow/Parquet/simdjson/GTest come from the system).
+configure:
     cmake -S . -B {{build_dir}} -DCMAKE_BUILD_TYPE={{build_type}} -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 
 # Configure (if needed) and build
@@ -45,7 +41,3 @@ run *ARGS: build
 # Remove build artifacts
 clean:
     rm -rf {{build_dir}}
-
-# Remove build artifacts and fetched dependencies
-distclean: clean
-    rm -rf third_party

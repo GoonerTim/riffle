@@ -30,8 +30,10 @@
 
 ## Статус
 
-⚠️ **Ранняя стадия.** Спецификация ([`docs/riffle.md`](docs/riffle.md)) готова; реализация в
-процессе. API и флаги могут меняться.
+🚧 **Рабочий MVP.** Конвертация JSON-lines → Parquet работает end-to-end (библиотека + CLI),
+написана test-first (~56 тестов). C++23. Схема выводится автоматически; вложенные объекты
+разворачиваются. Известные ограничения: инференс timestamp и вывод `columnar-raw` пока не
+реализованы, override `--schema` доступен только через библиотеку.
 
 ## Быстрый старт
 
@@ -40,15 +42,12 @@
 ```bash
 # Системные пакеты (Debian/Ubuntu)
 apt-get update && apt-get install -y \
-    build-essential cmake git \
-    libarrow-dev libparquet-dev \
-    libzstd-dev libsnappy-dev
-
-# simdjson (header-only) как submodule
-git clone https://github.com/simdjson/simdjson third_party/simdjson
+    build-essential cmake ninja-build \
+    libarrow-dev libparquet-dev libzstd-dev libsnappy-dev \
+    libsimdjson-dev libgtest-dev
 
 # Сборка
-cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j
 ```
 

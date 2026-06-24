@@ -24,9 +24,9 @@ tolerated.
 
 ```bash
 # Dependencies (Debian/Ubuntu)
-apt-get install -y build-essential cmake git \
-    libarrow-dev libparquet-dev libzstd-dev libsnappy-dev
-git clone https://github.com/simdjson/simdjson third_party/simdjson
+apt-get install -y build-essential cmake ninja-build \
+    libarrow-dev libparquet-dev libzstd-dev libsnappy-dev \
+    libsimdjson-dev libgtest-dev
 
 # Build & test via the task runner
 just build
@@ -37,7 +37,7 @@ We use [`just`](https://github.com/casey/just) as a task runner — run `just` t
 
 ## Coding guidelines
 
-- **Language:** C++20.
+- **Language:** C++23 (uses `std::expected`).
 - **Style: functional core, imperative shell.** Prefer free functions over orchestrator
   classes; model data as immutable value types constructed by `make_*` factories. Mutability is
   allowed **only** on the hot path (read buffers, column accumulators) and must be isolated.
