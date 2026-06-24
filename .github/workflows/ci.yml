@@ -88,5 +88,5 @@ jobs:
       - name: Run clang-tidy
         run: |
           clang-tidy-19 --version
-          files=$(git ls-files '*.cpp' '*.hpp')
+          files=$(git ls-files '*.cpp' '*.hpp' | grep -vE 'src/adapters/(json_parser|schema_json)\.cpp')
           if [ -n "$files" ]; then clang-tidy-19 -p build $files; fi

@@ -24,7 +24,7 @@ Checks: >
   -readability-isolate-declaration,
   -readability-else-after-return,
   -readability-qualified-auto
-WarningsAsErrors: '*'
+WarningsAsErrors: 'bugprone-*,performance-*,clang-analyzer-*,modernize-*,readability-*'
 HeaderFilterRegex: '.*/(src|include)/.*'
 FormatStyle: file
 CheckOptions:

@@ -18,14 +18,15 @@ namespace {
 
 std::shared_ptr<arrow::Table> read_parquet(const std::string& path) {
     auto infile = arrow::io::ReadableFile::Open(path).ValueOrDie();
-    std::unique_ptr<parquet::arrow::FileReader> reader;
-#if ARROW_VERSION_MAJOR >= 19
-    reader = parquet::arrow::OpenFile(infile, arrow::default_memory_pool()).ValueOrDie();
-#else
-    (void)parquet::arrow::OpenFile(infile, arrow::default_memory_pool(), &reader);
-#endif
     std::shared_ptr<arrow::Table> table;
+#if ARROW_VERSION_MAJOR >= 19
+    auto reader = parquet::arrow::OpenFile(infile, arrow::default_memory_pool()).ValueOrDie();
+    table = reader->ReadTable().ValueOrDie();
+#else
+    std::unique_ptr<parquet::arrow::FileReader> reader;
+    (void)parquet::arrow::OpenFile(infile, arrow::default_memory_pool(), &reader);
     (void)reader->ReadTable(&table);
+#endif
     return table;
 }
 
