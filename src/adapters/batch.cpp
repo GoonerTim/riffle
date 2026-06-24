@@ -114,6 +114,14 @@ std::expected<void, std::string> refill_to_double(arrow::ArrayBuilder& dst, cons
 
 }  // namespace
 
+std::shared_ptr<arrow::Schema> arrow_schema_of(const InferredSchema& schema) {
+    arrow::FieldVector fields;
+    for (const auto& column : schema.columns) {
+        fields.push_back(arrow::field(column.name, arrow_type(column.type)));
+    }
+    return arrow::schema(fields);
+}
+
 BatchBuilder make_batch_builder(const InferredSchema& schema) {
     BatchBuilder builder;
     for (const auto& column : schema.columns) {

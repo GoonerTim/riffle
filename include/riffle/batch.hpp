@@ -11,6 +11,7 @@
 namespace arrow {
 class ArrayBuilder;
 class RecordBatch;
+class Schema;
 }  // namespace arrow
 
 namespace riffle {
@@ -33,6 +34,9 @@ struct RecordBatch {
     std::shared_ptr<arrow::RecordBatch> data;
     std::size_t n_rows = 0;
 };
+
+// Build an Arrow schema mirroring an InferredSchema.
+std::shared_ptr<arrow::Schema> arrow_schema_of(const InferredSchema& schema);
 
 BatchBuilder make_batch_builder(const InferredSchema& schema);
 std::expected<void, std::string> append_row(BatchBuilder& builder, const Row& row);

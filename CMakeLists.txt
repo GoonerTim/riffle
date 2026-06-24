@@ -26,6 +26,7 @@ add_library(riffle_core
   src/domain/type_resolve.cpp
   src/domain/schema.cpp
   src/adapters/batch.cpp
+  src/adapters/parquet_writer.cpp
 )
 target_include_directories(riffle_core PUBLIC include)
 target_link_libraries(riffle_core
@@ -53,6 +54,7 @@ add_executable(riffle_tests
   tests/domain/infer_schema_test.cpp
   tests/domain/merge_override_test.cpp
   tests/adapters/batch_test.cpp
+  tests/adapters/parquet_writer_test.cpp
 )
 target_link_libraries(riffle_tests
   PRIVATE riffle_core GTest::gtest GTest::gtest_main GTest::gmock
