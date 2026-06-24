@@ -62,6 +62,18 @@ TEST(Convert, CollectsErrorsWhenRequested) {
     EXPECT_EQ(stats.errors[0].line_no, 2u);
 }
 
+TEST(Convert, AutoWidensIntToDoubleBeyondSample) {
+    std::string body;
+    for (int i = 0; i < 10001; ++i) body += "{\"v\":1}\n";  // exceeds INFER_SAMPLE_ROWS
+    body += "{\"v\":2.5}\n";
+    auto in = write_file("c_widen.jsonl", body);
+    auto out = ::testing::TempDir() + "c_widen.parquet";
+    auto stats = convert(config_for(in, out));
+    EXPECT_EQ(stats.final_state, PipelineState::DONE);
+    auto table = read_parquet(out);
+    EXPECT_EQ(table->schema()->field(0)->type()->id(), arrow::Type::DOUBLE);
+}
+
 TEST(Convert, AbortsOnBadLineWhenPolicyIsAbort) {
     auto in = write_file("c_abort.jsonl", "{\"a\":1}\nbroken\n");
     auto out = ::testing::TempDir() + "c_abort.parquet";

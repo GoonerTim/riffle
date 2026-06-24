@@ -82,10 +82,17 @@ private:
 
 struct PipelineCtx {
     const Config& cfg;
-    Writer& writer;
+    std::unique_ptr<Writer> writer;  // opened lazily on first flush
     BatchBuilder builder;
     ConvertStats stats;
 };
+
+// Reconstruct the (possibly widened) schema currently held by the builder.
+InferredSchema current_schema(const BatchBuilder& builder) {
+    InferredSchema schema;
+    for (const auto& column : builder.columns) schema.columns.push_back(column.schema);
+    return schema;
+}
 
 std::vector<Row> read_sample(RowSource& source, std::size_t limit) {
     std::vector<Row> sample;
@@ -102,16 +109,25 @@ InferredSchema build_schema_for(const Config& cfg, const std::vector<Row>& sampl
     return merge_override(schema, cfg.schema_override);
 }
 
+std::expected<void, std::string> ensure_writer(PipelineCtx& ctx) {
+    if (ctx.writer) return {};
+    auto writer = open_writer(ctx.cfg, current_schema(ctx.builder));
+    if (!writer) return std::unexpected(writer.error());
+    ctx.writer = std::move(*writer);
+    return {};
+}
+
 std::expected<void, std::string> flush(PipelineCtx& ctx) {
     if (ctx.builder.n_rows == 0) return {};
+    if (auto ok = ensure_writer(ctx); !ok) return ok;
     auto batch = build_batch(ctx.builder);
     if (!batch) return std::unexpected(batch.error());
     ctx.stats.rows_written += batch->n_rows;
-    return ctx.writer.write(*batch);
+    return ctx.writer->write(*batch);
 }
 
 std::expected<void, std::string> append_one(PipelineCtx& ctx, const Row& row) {
-    if (auto ok = append_row(ctx.builder, row); !ok) return ok;
+    if (auto ok = append_row(ctx.builder, row, ctx.cfg.type_conflict); !ok) return ok;
     ++ctx.stats.rows_read;
     if (ctx.builder.n_rows >= ctx.cfg.batch_rows) return flush(ctx);
     return {};
@@ -142,9 +158,14 @@ void set_final_state(ConvertStats& stats, const std::expected<void, std::string>
     stats.final_state = PipelineState::DONE;
 }
 
+std::expected<void, std::string> finalize(PipelineCtx& ctx) {
+    if (auto ok = ensure_writer(ctx); !ok) return ok;  // empty input → valid empty file
+    return ctx.writer->finish();
+}
+
 ConvertStats run_pipeline(PipelineCtx ctx, std::vector<Row>& sample, ChainedSource& source) {
     auto result = pump(ctx, sample, source);
-    if (result) result = ctx.writer.finish();
+    if (result) result = finalize(ctx);
     apply_error_policy(ctx.stats, ctx.cfg, source.errors());
     set_final_state(ctx.stats, result);
     return ctx.stats;
@@ -155,12 +176,6 @@ std::uint64_t elapsed_ms(Clock::time_point start) {
     return static_cast<std::uint64_t>(duration_cast<milliseconds>(Clock::now() - start).count());
 }
 
-ConvertStats aborted() {
-    auto stats = make_ConvertStats();
-    stats.final_state = PipelineState::ABORTED;
-    return stats;
-}
-
 }  // namespace
 
 ConvertStats convert(const Config& cfg) {
@@ -168,9 +183,7 @@ ConvertStats convert(const Config& cfg) {
     ChainedSource source(cfg.inputs);
     auto sample = read_sample(source, INFER_SAMPLE_ROWS);
     auto schema = build_schema_for(cfg, sample);
-    auto writer = open_writer(cfg, schema);
-    if (!writer) return aborted();
-    PipelineCtx ctx{cfg, *writer.value(), make_batch_builder(schema), make_ConvertStats()};
+    PipelineCtx ctx{cfg, nullptr, make_batch_builder(schema), make_ConvertStats()};
     auto stats = run_pipeline(std::move(ctx), sample, source);
     stats.elapsed_ms = elapsed_ms(start);
     return stats;

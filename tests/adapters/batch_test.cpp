@@ -54,6 +54,47 @@ TEST(Batch, TimestampColumnParsesIso) {
     EXPECT_EQ(ts->Value(0), 1000000);
 }
 
+TEST(Batch, AutoWidensIntColumnWhenDoubleArrives) {
+    InferredSchema schema{.columns = {{"v", ColumnType::INT64, true, "v"}}};
+    auto builder = make_batch_builder(schema);
+    ASSERT_TRUE(append_row(builder, Row{{{"v", CellValue{std::int64_t{1}}}}},
+                           TypeConflictPolicy::WIDEN)
+                    .has_value());
+    ASSERT_TRUE(append_row(builder, Row{{{"v", CellValue{2.5}}}}, TypeConflictPolicy::WIDEN)
+                    .has_value());
+    auto batch = build_batch(builder);
+    ASSERT_TRUE(batch.has_value());
+    auto v = std::static_pointer_cast<arrow::DoubleArray>(batch->data->column(0));
+    EXPECT_DOUBLE_EQ(v->Value(0), 1.0);
+    EXPECT_DOUBLE_EQ(v->Value(1), 2.5);
+}
+
+TEST(Batch, AutoWidensIncompatibleToString) {
+    InferredSchema schema{.columns = {{"v", ColumnType::INT64, true, "v"}}};
+    auto builder = make_batch_builder(schema);
+    ASSERT_TRUE(append_row(builder, Row{{{"v", CellValue{std::int64_t{7}}}}},
+                           TypeConflictPolicy::WIDEN)
+                    .has_value());
+    ASSERT_TRUE(append_row(builder, Row{{{"v", CellValue{std::string("hi")}}}},
+                           TypeConflictPolicy::WIDEN)
+                    .has_value());
+    auto batch = build_batch(builder);
+    ASSERT_TRUE(batch.has_value());
+    auto v = std::static_pointer_cast<arrow::StringArray>(batch->data->column(0));
+    EXPECT_EQ(v->GetString(0), "7");
+    EXPECT_EQ(v->GetString(1), "hi");
+}
+
+TEST(Batch, ErrorPolicyRejectsWidening) {
+    InferredSchema schema{.columns = {{"v", ColumnType::INT64, true, "v"}}};
+    auto builder = make_batch_builder(schema);
+    ASSERT_TRUE(append_row(builder, Row{{{"v", CellValue{std::int64_t{1}}}}},
+                           TypeConflictPolicy::ERROR)
+                    .has_value());
+    EXPECT_FALSE(append_row(builder, Row{{{"v", CellValue{2.5}}}}, TypeConflictPolicy::ERROR)
+                     .has_value());
+}
+
 TEST(Batch, WidenColumnIntToDouble) {
     InferredSchema schema{.columns = {{"v", ColumnType::INT64, true, "v"}}};
     auto builder = make_batch_builder(schema);

@@ -39,7 +39,8 @@ struct RecordBatch {
 std::shared_ptr<arrow::Schema> arrow_schema_of(const InferredSchema& schema);
 
 BatchBuilder make_batch_builder(const InferredSchema& schema);
-std::expected<void, std::string> append_row(BatchBuilder& builder, const Row& row);
+std::expected<void, std::string> append_row(BatchBuilder& builder, const Row& row,
+                                            TypeConflictPolicy policy = TypeConflictPolicy::WIDEN);
 std::expected<RecordBatch, std::string> build_batch(BatchBuilder& builder);
 std::expected<void, std::string> widen_column(ColumnBuilder& column, ColumnType to);
 

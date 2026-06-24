@@ -2,11 +2,13 @@
 
 #include <arrow/api.h>
 
+#include <array>
 #include <cstdint>
 #include <string>
 #include <utility>
 #include <variant>
 
+#include "riffle/schema.hpp"
 #include "riffle/timestamp.hpp"
 
 namespace riffle {
@@ -59,6 +61,11 @@ std::string to_text(const CellValue& value) {
 template <class B>
 B& as(ColumnBuilder& column) {
     return *static_cast<B*>(column.builder.get());
+}
+
+template <class A>
+auto as_array(const arrow::Array& array, std::int64_t i) {
+    return static_cast<const A&>(array).Value(i);
 }
 
 std::expected<void, std::string> append_null(ColumnBuilder& column) {
@@ -117,14 +124,48 @@ std::expected<void, std::string> finish_column(ColumnBuilder& column,
     return {};
 }
 
-std::expected<void, std::string> refill_to_double(arrow::ArrayBuilder& dst, const arrow::Array& src) {
-    const auto& in = static_cast<const arrow::Int64Array&>(src);
-    auto& out = static_cast<arrow::DoubleBuilder&>(dst);
-    for (std::int64_t i = 0; i < in.length(); ++i) {
-        auto status = in.IsNull(i) ? out.AppendNull() : out.Append(static_cast<double>(in.Value(i)));
-        if (auto ok = check(status); !ok) return ok;
+std::string text_at(const arrow::Array& array, std::int64_t i, ColumnType from) {
+    switch (from) {
+        case ColumnType::INT64: return std::to_string(as_array<arrow::Int64Array>(array, i));
+        case ColumnType::DOUBLE: return std::to_string(as_array<arrow::DoubleArray>(array, i));
+        case ColumnType::BOOL: return as_array<arrow::BooleanArray>(array, i) ? "true" : "false";
+        case ColumnType::TIMESTAMP: return std::to_string(as_array<arrow::TimestampArray>(array, i));
+        case ColumnType::STRING: return std::string(static_cast<const arrow::StringArray&>(array).GetView(i));
+        default: return {};
+    }
+}
+
+std::expected<void, std::string> refill_value(arrow::ArrayBuilder& dst, const arrow::Array& src,
+                                              std::int64_t i, ColumnType from, ColumnType to) {
+    if (to == ColumnType::DOUBLE) {
+        return check(static_cast<arrow::DoubleBuilder&>(dst).Append(
+            static_cast<double>(as_array<arrow::Int64Array>(src, i))));
+    }
+    if (to == ColumnType::STRING) {
+        return check(static_cast<arrow::StringBuilder&>(dst).Append(text_at(src, i, from)));
+    }
+    return std::unexpected("unsupported widening target");
+}
+
+std::expected<void, std::string> refill(arrow::ArrayBuilder& dst, const arrow::Array& src,
+                                        ColumnType from, ColumnType to) {
+    for (std::int64_t i = 0; i < src.length(); ++i) {
+        if (src.IsNull(i)) {
+            if (auto ok = check(dst.AppendNull()); !ok) return ok;
+            continue;
+        }
+        if (auto ok = refill_value(dst, src, i, from, to); !ok) return ok;
     }
     return {};
+}
+
+bool cell_fits(ColumnType column, const CellValue& value) {
+    if (std::holds_alternative<std::monostate>(value)) return true;
+    auto type = column_type_of(value);
+    if (type == column) return true;
+    if (column == ColumnType::DOUBLE && type == ColumnType::INT64) return true;
+    if (column == ColumnType::TIMESTAMP && type == ColumnType::STRING) return true;
+    return column == ColumnType::STRING;
 }
 
 }  // namespace
@@ -145,9 +186,24 @@ BatchBuilder make_batch_builder(const InferredSchema& schema) {
     return builder;
 }
 
-std::expected<void, std::string> append_row(BatchBuilder& builder, const Row& row) {
+namespace {
+
+std::expected<void, std::string> ensure_fits(ColumnBuilder& column, const CellValue& value,
+                                             TypeConflictPolicy policy) {
+    if (cell_fits(column.schema.type, value)) return {};
+    const std::array<ColumnType, 2> seen{column.schema.type, column_type_of(value)};
+    auto target = resolve_type_conflict(seen, policy);
+    if (!target) return std::unexpected(target.error());
+    return widen_column(column, *target);
+}
+
+}  // namespace
+
+std::expected<void, std::string> append_row(BatchBuilder& builder, const Row& row,
+                                            TypeConflictPolicy policy) {
     for (auto& column : builder.columns) {
         auto value = find_value(row, column.schema.json_path);
+        if (auto ok = ensure_fits(column, value, policy); !ok) return ok;
         if (auto ok = append_cell(column, value); !ok) return ok;
     }
     ++builder.n_rows;
@@ -166,13 +222,12 @@ std::expected<RecordBatch, std::string> build_batch(BatchBuilder& builder) {
 }
 
 std::expected<void, std::string> widen_column(ColumnBuilder& column, ColumnType to) {
-    if (to != ColumnType::DOUBLE) return std::unexpected("unsupported widening target");
+    const ColumnType from = column.schema.type;
     std::shared_ptr<arrow::Array> old;
     if (auto ok = check(column.builder->Finish(&old)); !ok) return ok;
     column.builder = make_array_builder(to);
-    if (auto ok = refill_to_double(*column.builder, *old); !ok) return ok;
     column.schema.type = to;
-    return {};
+    return refill(*column.builder, *old, from, to);
 }
 
 }  // namespace riffle
