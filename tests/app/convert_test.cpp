@@ -73,6 +73,18 @@ TEST(Convert, SchemaOverrideForcesColumnType) {
     EXPECT_EQ(table->schema()->field(0)->type()->id(), arrow::Type::STRING);
 }
 
+TEST(Convert, WritesEveryRowWhenInputExceedsSample) {
+    std::string body;
+    const int rows = 10005;  // just past INFER_SAMPLE_ROWS
+    for (int i = 0; i < rows; ++i) body += "{\"v\":" + std::to_string(i) + "}\n";
+    auto in = write_file("c_count.jsonl", body);
+    auto out = ::testing::TempDir() + "c_count.parquet";
+    auto stats = convert(config_for(in, out));
+    EXPECT_EQ(stats.rows_read, static_cast<std::size_t>(rows));
+    EXPECT_EQ(stats.rows_written, static_cast<std::size_t>(rows));
+    EXPECT_EQ(read_parquet(out)->num_rows(), rows);
+}
+
 TEST(Convert, AutoWidensIntToDoubleBeyondSample) {
     std::string body;
     for (int i = 0; i < 10001; ++i) body += "{\"v\":1}\n";  // exceeds INFER_SAMPLE_ROWS

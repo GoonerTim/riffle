@@ -96,7 +96,9 @@ InferredSchema current_schema(const BatchBuilder& builder) {
 
 std::vector<Row> read_sample(RowSource& source, std::size_t limit) {
     std::vector<Row> sample;
-    for (auto row = source.next(); row && sample.size() < limit; row = source.next()) {
+    while (sample.size() < limit) {
+        auto row = source.next();  // never over-read past the limit
+        if (!row) break;
         sample.push_back(std::move(*row));
     }
     return sample;

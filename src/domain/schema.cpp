@@ -58,7 +58,9 @@ InferredSchema build_schema(const Accum& acc, TypeConflictPolicy policy, std::si
 InferredSchema infer_schema(RowSource& source, TypeConflictPolicy policy) {
     Accum acc;
     std::size_t rows = 0;
-    for (auto row = source.next(); row && rows < INFER_SAMPLE_ROWS; row = source.next()) {
+    while (rows < INFER_SAMPLE_ROWS) {
+        auto row = source.next();  // never over-read past the sample limit
+        if (!row) break;
         observe_row(acc, *row);
         ++rows;
     }
