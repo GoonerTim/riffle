@@ -1,11 +1,14 @@
 #include "riffle/convert.hpp"
 
 #include <arrow/api.h>
+#include <arrow/io/compressed.h>
 #include <arrow/io/file.h>
+#include <arrow/util/compression.h>
 #include <arrow/util/config.h>
 #include <gtest/gtest.h>
 #include <parquet/arrow/reader.h>
 
+#include <cstdint>
 #include <fstream>
 #include <string>
 
@@ -39,6 +42,16 @@ Config config_for(const std::string& in, const std::string& out) {
     return make_Config({.inputs = {in}, .output_path = out});
 }
 
+std::string write_gzip(const std::string& name, const std::string& body) {
+    std::string path = ::testing::TempDir() + name;
+    auto sink = arrow::io::FileOutputStream::Open(path).ValueOrDie();
+    auto codec = arrow::util::Codec::Create(arrow::Compression::GZIP).ValueOrDie();
+    auto out = arrow::io::CompressedOutputStream::Make(codec.get(), sink).ValueOrDie();
+    (void)out->Write(body.data(), static_cast<std::int64_t>(body.size()));
+    (void)out->Close();
+    return path;
+}
+
 }
 
 TEST(Convert, AppliesSelectAndRename) {
@@ -53,6 +66,15 @@ TEST(Convert, AppliesSelectAndRename) {
     ASSERT_EQ(table->num_columns(), 2);
     EXPECT_EQ(table->schema()->field(0)->name(), "c");
     EXPECT_EQ(table->schema()->field(1)->name(), "id");
+}
+
+TEST(Convert, ReadsGzipInputTransparently) {
+    auto in = write_gzip("c_gz.jsonl.gz", "{\"code\":200}\n{\"code\":404}\n{\"code\":500}\n");
+    auto out = ::testing::TempDir() + "c_gz.parquet";
+    auto stats = convert(config_for(in, out));
+    EXPECT_EQ(stats.final_state, PipelineState::DONE);
+    EXPECT_EQ(stats.rows_written, 3u);
+    EXPECT_EQ(read_parquet(out)->num_rows(), 3);
 }
 
 TEST(Convert, FlushesByByteLimitKeepingAllRows) {

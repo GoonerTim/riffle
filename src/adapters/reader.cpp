@@ -5,14 +5,18 @@
 
 namespace riffle {
 
-LineReader::LineReader(std::istream& input, std::size_t max_line, std::size_t buffer)
-    : input_(input), max_line_(max_line) {
+std::size_t StdByteSource::read(char* dst, std::size_t n) {
+    input_.read(dst, static_cast<std::streamsize>(n));
+    return static_cast<std::size_t>(input_.gcount());
+}
+
+LineReader::LineReader(ByteSource& source, std::size_t max_line, std::size_t buffer)
+    : source_(source), max_line_(max_line) {
     chunk_.resize(buffer == 0 ? 1 : buffer);
 }
 
 bool LineReader::fill() {
-    input_.read(chunk_.data(), static_cast<std::streamsize>(chunk_.size()));
-    end_ = static_cast<std::size_t>(input_.gcount());
+    end_ = source_.read(chunk_.data(), chunk_.size());
     pos_ = 0;
     return end_ > 0;
 }

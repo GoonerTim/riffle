@@ -46,6 +46,7 @@ add_library(riffle_core
   src/adapters/writer.cpp
   src/adapters/columnar_raw_writer.cpp
   src/adapters/reader.cpp
+  src/adapters/input.cpp
   src/adapters/json_parser.cpp
   src/adapters/schema_json.cpp
   src/app/convert.cpp

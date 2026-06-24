@@ -1,8 +1,6 @@
 #include "riffle/convert.hpp"
 
 #include <chrono>
-#include <fstream>
-#include <iostream>
 #include <memory>
 #include <optional>
 #include <string>
@@ -11,6 +9,7 @@
 
 #include "riffle/batch.hpp"
 #include "riffle/factories.hpp"
+#include "riffle/input.hpp"
 #include "riffle/json_parser.hpp"
 #include "riffle/reader.hpp"
 #include "riffle/schema.hpp"
@@ -20,11 +19,6 @@ namespace riffle {
 namespace {
 
 using Clock = std::chrono::steady_clock;
-
-std::unique_ptr<std::istream> open_stream(const std::string& path) {
-    if (path == "-") return std::make_unique<std::istream>(std::cin.rdbuf());
-    return std::make_unique<std::ifstream>(path);
-}
 
 class ChainedLines {
 public:
@@ -41,15 +35,15 @@ public:
 private:
     void advance() {
         reader_.reset();
-        stream_.reset();
+        source_.reset();
         if (index_ >= paths_.size()) return;
-        stream_ = open_stream(paths_[index_++]);
-        reader_ = std::make_unique<LineReader>(*stream_);
+        source_ = open_input(paths_[index_++]);
+        reader_ = std::make_unique<LineReader>(*source_);
     }
 
     std::vector<std::string> paths_;
     std::size_t index_ = 0;
-    std::unique_ptr<std::istream> stream_;
+    std::unique_ptr<ByteSource> source_;
     std::unique_ptr<LineReader> reader_;
 };
 
