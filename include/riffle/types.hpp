@@ -5,6 +5,7 @@
 #include <expected>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <variant>
 #include <vector>
 
@@ -54,16 +55,24 @@ struct InferredSchema {
     bool had_conflicts = false;
 };
 
+struct Projection {
+    std::vector<std::string> select;
+    std::vector<std::string> exclude;
+    std::vector<std::pair<std::string, std::string>> rename;
+};
+
 struct Config {
     std::vector<std::string> inputs;
     std::string output_path;
     OutputFormat output_format = OutputFormat::PARQUET;
     InferredSchema schema_override;
+    Projection projection;
     CompressionCodec compression = CompressionCodec::ZSTD;
     std::size_t batch_rows = DEFAULT_BATCH_ROWS;
     OnError on_error = OnError::SKIP;
     TypeConflictPolicy type_conflict = TypeConflictPolicy::WIDEN;
     bool emit_stats = false;
+    bool print_schema = false;
 };
 
 struct ParseError {

@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(riffle VERSION 0.1.0 LANGUAGES CXX)
+project(riffle VERSION 0.1.1 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -71,6 +71,7 @@ add_executable(riffle_tests
   tests/domain/type_resolve_test.cpp
   tests/domain/infer_schema_test.cpp
   tests/domain/merge_override_test.cpp
+  tests/domain/projection_test.cpp
   tests/domain/timestamp_test.cpp
   tests/domain/schema_json_test.cpp
   tests/adapters/batch_test.cpp

@@ -33,7 +33,8 @@ InferredSchema make_InferredSchema(InferredSchema draft) {
 
 Config make_Config(Config draft) {
     require(!draft.inputs.empty(), "Config.inputs must not be empty");
-    require(!draft.output_path.empty(), "Config.output_path must not be empty");
+    require(!draft.output_path.empty() || draft.print_schema,
+            "Config.output_path must not be empty");
     require(draft.batch_rows >= 1, "Config.batch_rows must be >= 1");
     return draft;
 }

@@ -1,6 +1,9 @@
 #include "riffle/args.hpp"
 
+#include <sstream>
 #include <stdexcept>
+#include <string>
+#include <vector>
 
 #include "riffle/factories.hpp"
 #include "riffle/schema_json.hpp"
@@ -11,7 +14,27 @@ namespace {
 bool is_value_option(std::string_view token) {
     return token == "-o" || token == "--output" || token == "--format" ||
            token == "--compression" || token == "--on-error" || token == "--type-conflict" ||
-           token == "--batch-rows" || token == "--schema";
+           token == "--batch-rows" || token == "--schema" || token == "--select" ||
+           token == "--exclude" || token == "--rename";
+}
+
+std::vector<std::string> split_csv(const std::string& value) {
+    std::vector<std::string> out;
+    std::stringstream stream(value);
+    std::string item;
+    while (std::getline(stream, item, ',')) {
+        if (!item.empty()) out.push_back(item);
+    }
+    return out;
+}
+
+std::expected<void, std::string> set_rename(Config& draft, const std::string& value) {
+    for (const auto& item : split_csv(value)) {
+        auto eq = item.find('=');
+        if (eq == std::string::npos) return std::unexpected("--rename expects from=to: " + item);
+        draft.projection.rename.emplace_back(item.substr(0, eq), item.substr(eq + 1));
+    }
+    return {};
 }
 
 std::expected<void, std::string> set_schema(Config& draft, const std::string& path) {
@@ -53,6 +76,15 @@ std::expected<void, std::string> apply_value(Config& draft, std::string_view key
     }
     if (key == "--schema") return set_schema(draft, value);
     if (key == "--batch-rows") return set_batch_rows(draft, value);
+    if (key == "--select") {
+        draft.projection.select = split_csv(value);
+        return {};
+    }
+    if (key == "--exclude") {
+        draft.projection.exclude = split_csv(value);
+        return {};
+    }
+    if (key == "--rename") return set_rename(draft, value);
     return apply_enum(draft, key, value);
 }
 
@@ -76,6 +108,8 @@ std::expected<Config, std::string> parse_args(std::span<const std::string> args)
         const std::string& token = args[i];
         if (token == "--stats") {
             draft.emit_stats = true;
+        } else if (token == "--print-schema") {
+            draft.print_schema = true;
         } else if (is_value_option(token)) {
             if (i + 1 >= args.size()) return std::unexpected("missing value for " + token);
             if (auto ok = apply_value(draft, token, args[++i]); !ok)

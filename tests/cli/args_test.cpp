@@ -65,4 +65,25 @@ TEST(ParseArgs, RejectsMissingSchemaFile) {
     EXPECT_FALSE(parse({"in.jsonl", "-o", "o.parquet", "--schema", "/no/such.json"}).has_value());
 }
 
+TEST(ParseArgs, ParsesProjectionFlags) {
+    auto cfg = parse({"in.jsonl", "-o", "o.parquet", "--select", "a,b", "--exclude", "c",
+                      "--rename", "a=id,b=name"});
+    ASSERT_TRUE(cfg.has_value());
+    EXPECT_EQ(cfg->projection.select, (std::vector<std::string>{"a", "b"}));
+    EXPECT_EQ(cfg->projection.exclude, (std::vector<std::string>{"c"}));
+    ASSERT_EQ(cfg->projection.rename.size(), 2u);
+    EXPECT_EQ(cfg->projection.rename[0].first, "a");
+    EXPECT_EQ(cfg->projection.rename[0].second, "id");
+}
+
+TEST(ParseArgs, PrintSchemaAllowsMissingOutput) {
+    auto cfg = parse({"in.jsonl", "--print-schema"});
+    ASSERT_TRUE(cfg.has_value());
+    EXPECT_TRUE(cfg->print_schema);
+}
+
+TEST(ParseArgs, RejectsBadRename) {
+    EXPECT_FALSE(parse({"in.jsonl", "-o", "o.parquet", "--rename", "noequalssign"}).has_value());
+}
+
 }

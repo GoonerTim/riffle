@@ -72,6 +72,11 @@ InferredSchema infer(const Config& cfg, const std::vector<std::string>& sample) 
     return merge_override(schema, cfg.schema_override);
 }
 
+std::expected<InferredSchema, std::string> resolve_schema(const Config& cfg,
+                                                          const std::vector<std::string>& sample) {
+    return apply_projection(infer(cfg, sample), cfg.projection);
+}
+
 struct Ctx {
     const Config& cfg;
     JsonParser& parser;
@@ -154,8 +159,14 @@ ConvertStats convert(const Config& cfg) {
     const auto start = Clock::now();
     ChainedLines lines(cfg.inputs);
     auto sample = read_sample(lines, INFER_SAMPLE_ROWS);
-    auto schema = infer(cfg, sample);
-    auto builder = make_batch_builder(schema);
+    auto schema = resolve_schema(cfg, sample);
+    if (!schema) {
+        auto stats = make_ConvertStats();
+        stats.final_state = PipelineState::ABORTED;
+        stats.elapsed_ms = elapsed_ms(start);
+        return stats;
+    }
+    auto builder = make_batch_builder(*schema);
     JsonParser parser;
     BatchSink sink(builder, cfg.type_conflict);
     Ctx ctx{cfg, parser, sink, builder, nullptr, make_ConvertStats(), 0};
@@ -164,6 +175,12 @@ ConvertStats convert(const Config& cfg) {
     set_final_state(ctx.stats, result);
     ctx.stats.elapsed_ms = elapsed_ms(start);
     return ctx.stats;
+}
+
+std::expected<InferredSchema, std::string> infer_schema(const Config& cfg) {
+    ChainedLines lines(cfg.inputs);
+    auto sample = read_sample(lines, INFER_SAMPLE_ROWS);
+    return resolve_schema(cfg, sample);
 }
 
 }

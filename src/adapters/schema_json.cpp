@@ -80,4 +80,35 @@ std::expected<InferredSchema, std::string> load_schema_file(const std::string& p
     return parse_schema_json(buffer.str());
 }
 
+namespace {
+
+std::string json_escape(std::string_view text) {
+    std::string out;
+    for (char c : text) {
+        if (c == '"' || c == '\\') out.push_back('\\');
+        out.push_back(c);
+    }
+    return out;
+}
+
+std::string column_json(const ColumnSchema& column) {
+    std::string out = "{\"name\":\"" + json_escape(column.name) + "\",\"type\":\"" +
+                      std::string(to_string(column.type)) +
+                      "\",\"nullable\":" + (column.nullable ? "true" : "false") +
+                      ",\"json_path\":\"" + json_escape(column.json_path) + "\"}";
+    return out;
+}
+
+}  // namespace
+
+std::string write_schema_json(const InferredSchema& schema) {
+    std::string out = "{\"columns\":[";
+    for (std::size_t i = 0; i < schema.columns.size(); ++i) {
+        if (i != 0) out += ",";
+        out += column_json(schema.columns[i]);
+    }
+    out += "]}";
+    return out;
+}
+
 }

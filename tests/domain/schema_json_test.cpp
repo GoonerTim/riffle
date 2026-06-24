@@ -44,4 +44,17 @@ TEST(ParseSchemaJson, RejectsMissingName) {
     EXPECT_FALSE(parse_schema_json(R"({"columns":[{"type":"int64"}]})").has_value());
 }
 
+TEST(WriteSchemaJson, RoundTripsThroughParse) {
+    InferredSchema schema{.columns = {{"id", ColumnType::STRING, false, "id"},
+                                      {"code", ColumnType::INT64, true, "req.code"}}};
+    auto parsed = parse_schema_json(write_schema_json(schema));
+    ASSERT_TRUE(parsed.has_value());
+    ASSERT_EQ(parsed->columns.size(), 2u);
+    EXPECT_EQ(parsed->columns[0].name, "id");
+    EXPECT_EQ(parsed->columns[0].type, ColumnType::STRING);
+    EXPECT_FALSE(parsed->columns[0].nullable);
+    EXPECT_EQ(parsed->columns[1].type, ColumnType::INT64);
+    EXPECT_EQ(parsed->columns[1].json_path, "req.code");
+}
+
 }

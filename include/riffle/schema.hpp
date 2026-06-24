@@ -32,4 +32,7 @@ private:
 
 InferredSchema merge_override(InferredSchema inferred, const InferredSchema& override);
 
+std::expected<InferredSchema, std::string> apply_projection(InferredSchema schema,
+                                                            const Projection& projection);
+
 }

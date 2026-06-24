@@ -545,7 +545,13 @@ int main() {
 | `--batch-rows`      | целое                          | `65536`      | `batch_rows`                        |
 | `--on-error`        | `skip` \| `abort` \| `collect` | `skip`       | `on_error`                          |
 | `--type-conflict`   | `widen` \| `string` \| `error` | `widen`      | `type_conflict`                     |
+| `--select`          | `col,col,...`                  | все          | `projection.select`                 |
+| `--exclude`         | `col,col,...`                  | нет          | `projection.exclude`                |
+| `--rename`          | `from=to,...`                  | нет          | `projection.rename`                 |
+| `--print-schema`    | —                              | выкл.        | `print_schema` (печатает схему через `infer_schema`/`write_schema_json`) |
 | `--stats`           | —                              | выкл.        | `emit_stats`                        |
+| `-h, --help`        | —                              | —            | справка, выход `EXIT_OK`            |
+| `--version`         | —                              | —            | версия, выход `EXIT_OK`            |
 | `-` (позиционный)   | —                              | —            | элемент `inputs` = stdin            |
 
 #### Коды выхода

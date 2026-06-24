@@ -41,6 +41,20 @@ Config config_for(const std::string& in, const std::string& out) {
 
 }
 
+TEST(Convert, AppliesSelectAndRename) {
+    auto in = write_file("c_proj.jsonl", "{\"a\":1,\"b\":\"x\",\"c\":2.5}\n");
+    auto out = ::testing::TempDir() + "c_proj.parquet";
+    auto cfg = config_for(in, out);
+    cfg.projection.select = {"c", "a"};
+    cfg.projection.rename = {{"a", "id"}};
+    auto stats = convert(cfg);
+    EXPECT_EQ(stats.final_state, PipelineState::DONE);
+    auto table = read_parquet(out);
+    ASSERT_EQ(table->num_columns(), 2);
+    EXPECT_EQ(table->schema()->field(0)->name(), "c");
+    EXPECT_EQ(table->schema()->field(1)->name(), "id");
+}
+
 TEST(Convert, WritesParquetFromJsonl) {
     auto in = write_file("c_ok.jsonl", "{\"code\":200}\n{\"code\":404}\n{\"code\":500}\n");
     auto out = ::testing::TempDir() + "c_ok.parquet";

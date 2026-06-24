@@ -2,7 +2,9 @@
 
 #include <algorithm>
 #include <ranges>
+#include <set>
 #include <string>
+#include <utility>
 #include <variant>
 #include <vector>
 
@@ -71,6 +73,64 @@ InferredSchema merge_override(InferredSchema inferred, const InferredSchema& ove
         apply_override(inferred.columns, column);
     }
     return make_InferredSchema(inferred);
+}
+
+namespace {
+
+const ColumnSchema* find_const(const std::vector<ColumnSchema>& columns, const std::string& name) {
+    for (const auto& col : columns) {
+        if (col.name == name) return &col;
+    }
+    return nullptr;
+}
+
+std::expected<std::vector<ColumnSchema>, std::string> select_columns(
+    const std::vector<ColumnSchema>& columns, const std::vector<std::string>& select) {
+    std::vector<ColumnSchema> out;
+    for (const auto& name : select) {
+        const auto* col = find_const(columns, name);
+        if (!col) return std::unexpected("unknown column in --select: " + name);
+        out.push_back(*col);
+    }
+    return out;
+}
+
+bool contains(const std::vector<std::string>& names, const std::string& name) {
+    return std::ranges::find(names, name) != names.end();
+}
+
+void rename_columns(std::vector<ColumnSchema>& columns,
+                    const std::vector<std::pair<std::string, std::string>>& renames) {
+    for (const auto& [from, to] : renames) {
+        if (auto* col = find_by_name(columns, from)) col->name = to;
+    }
+}
+
+bool has_duplicates(const std::vector<ColumnSchema>& columns) {
+    std::set<std::string> seen;
+    for (const auto& col : columns) {
+        if (!seen.insert(col.name).second) return true;
+    }
+    return false;
+}
+
+}  // namespace
+
+std::expected<InferredSchema, std::string> apply_projection(InferredSchema schema,
+                                                            const Projection& projection) {
+    auto columns = schema.columns;
+    if (!projection.select.empty()) {
+        auto selected = select_columns(columns, projection.select);
+        if (!selected) return std::unexpected(selected.error());
+        columns = std::move(*selected);
+    }
+    std::erase_if(columns,
+                  [&](const ColumnSchema& c) { return contains(projection.exclude, c.name); });
+    rename_columns(columns, projection.rename);
+    if (has_duplicates(columns))
+        return std::unexpected("projection produced duplicate column names");
+    schema.columns = std::move(columns);
+    return schema;
 }
 
 }

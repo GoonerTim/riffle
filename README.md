@@ -161,8 +161,13 @@ int main() {
 | `--batch-rows`      | integer                        | `65536`   | Rows per batch                          |
 | `--on-error`        | `skip` \| `abort` \| `collect` | `skip`    | Policy for malformed lines              |
 | `--type-conflict`   | `widen` \| `string` \| `error` | `widen`   | Column type-conflict resolution         |
+| `--select`          | `col,col,...`                  | all       | Keep only these columns (in this order) |
+| `--exclude`         | `col,col,...`                  | none      | Drop these columns                      |
+| `--rename`          | `from=to,...`                  | none      | Rename output columns                   |
+| `--print-schema`    | —                              | off       | Print the inferred schema as JSON, then exit |
 | `--stats`           | —                              | off       | Print conversion stats to stderr        |
-| `-h, --help`        | —                              | —         | Show usage                              |
+| `-h, --help`        | —                              | —         | Show help and exit                      |
+| `--version`         | —                              | —         | Show version and exit                   |
 
 ## Development
 
