@@ -70,12 +70,24 @@ constexpr std::array<Row<PipelineState>, 7> kStates{{
 
 }
 
-std::string_view to_string(ColumnType type) { return name_of<ColumnType>(kColumnTypes, type); }
-std::string_view to_string(OnError value) { return name_of<OnError>(kOnError, value); }
-std::string_view to_string(TypeConflictPolicy v) { return name_of<TypeConflictPolicy>(kConflictPolicies, v); }
-std::string_view to_string(CompressionCodec v) { return name_of<CompressionCodec>(kCodecs, v); }
-std::string_view to_string(OutputFormat value) { return name_of<OutputFormat>(kFormats, value); }
-std::string_view to_string(PipelineState value) { return name_of<PipelineState>(kStates, value); }
+std::string_view to_string(ColumnType type) {
+    return name_of<ColumnType>(kColumnTypes, type);
+}
+std::string_view to_string(OnError value) {
+    return name_of<OnError>(kOnError, value);
+}
+std::string_view to_string(TypeConflictPolicy v) {
+    return name_of<TypeConflictPolicy>(kConflictPolicies, v);
+}
+std::string_view to_string(CompressionCodec v) {
+    return name_of<CompressionCodec>(kCodecs, v);
+}
+std::string_view to_string(OutputFormat value) {
+    return name_of<OutputFormat>(kFormats, value);
+}
+std::string_view to_string(PipelineState value) {
+    return name_of<PipelineState>(kStates, value);
+}
 
 std::expected<ColumnType, std::string> parse_column_type(std::string_view text) {
     return value_of<ColumnType>(kColumnTypes, text);
@@ -95,11 +107,16 @@ std::expected<OutputFormat, std::string> parse_output_format(std::string_view te
 
 ColumnType column_type_of(const CellValue& value) {
     switch (value.index()) {
-        case 1: return ColumnType::INT64;
-        case 2: return ColumnType::DOUBLE;
-        case 3: return ColumnType::BOOL;
-        case 4: return ColumnType::STRING;
-        default: return ColumnType::NULLTYPE;
+        case 1:
+            return ColumnType::INT64;
+        case 2:
+            return ColumnType::DOUBLE;
+        case 3:
+            return ColumnType::BOOL;
+        case 4:
+            return ColumnType::STRING;
+        default:
+            return ColumnType::NULLTYPE;
     }
 }
 

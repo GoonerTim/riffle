@@ -21,12 +21,18 @@ std::expected<void, std::string> check(const arrow::Status& status) {
 
 std::shared_ptr<arrow::DataType> arrow_type(ColumnType type) {
     switch (type) {
-        case ColumnType::INT64: return arrow::int64();
-        case ColumnType::DOUBLE: return arrow::float64();
-        case ColumnType::BOOL: return arrow::boolean();
-        case ColumnType::STRING: return arrow::utf8();
-        case ColumnType::TIMESTAMP: return arrow::timestamp(arrow::TimeUnit::MICRO, "UTC");
-        default: return arrow::null();
+        case ColumnType::INT64:
+            return arrow::int64();
+        case ColumnType::DOUBLE:
+            return arrow::float64();
+        case ColumnType::BOOL:
+            return arrow::boolean();
+        case ColumnType::STRING:
+            return arrow::utf8();
+        case ColumnType::TIMESTAMP:
+            return arrow::timestamp(arrow::TimeUnit::MICRO, "UTC");
+        default:
+            return arrow::null();
     }
 }
 
@@ -40,9 +46,15 @@ std::string to_text(const CellValue& value) {
 
 void push_null(ColumnBuilder& column) {
     switch (column.schema.type) {
-        case ColumnType::DOUBLE: column.doubles.push_back(0); break;
-        case ColumnType::STRING: column.strings.emplace_back(); break;
-        default: column.ints.push_back(0); break;
+        case ColumnType::DOUBLE:
+            column.doubles.push_back(0);
+            break;
+        case ColumnType::STRING:
+            column.strings.emplace_back();
+            break;
+        default:
+            column.ints.push_back(0);
+            break;
     }
     column.valid.push_back(0);
     ++column.null_count;
@@ -56,9 +68,12 @@ std::expected<void, std::string> push_int(ColumnBuilder& column, const CellValue
 }
 
 std::expected<void, std::string> push_double(ColumnBuilder& column, const CellValue& value) {
-    if (auto* v = std::get_if<std::int64_t>(&value)) column.doubles.push_back(static_cast<double>(*v));
-    else if (auto* v = std::get_if<double>(&value)) column.doubles.push_back(*v);
-    else return std::unexpected("double column got non-numeric value");
+    if (auto* v = std::get_if<std::int64_t>(&value))
+        column.doubles.push_back(static_cast<double>(*v));
+    else if (auto* v = std::get_if<double>(&value))
+        column.doubles.push_back(*v);
+    else
+        return std::unexpected("double column got non-numeric value");
     return {};
 }
 
@@ -80,12 +95,19 @@ std::expected<void, std::string> push_timestamp(ColumnBuilder& column, const Cel
 
 std::expected<void, std::string> push_typed(ColumnBuilder& column, const CellValue& value) {
     switch (column.schema.type) {
-        case ColumnType::INT64: return push_int(column, value);
-        case ColumnType::DOUBLE: return push_double(column, value);
-        case ColumnType::BOOL: return push_bool(column, value);
-        case ColumnType::TIMESTAMP: return push_timestamp(column, value);
-        case ColumnType::STRING: column.strings.push_back(to_text(value)); return {};
-        default: return {};
+        case ColumnType::INT64:
+            return push_int(column, value);
+        case ColumnType::DOUBLE:
+            return push_double(column, value);
+        case ColumnType::BOOL:
+            return push_bool(column, value);
+        case ColumnType::TIMESTAMP:
+            return push_timestamp(column, value);
+        case ColumnType::STRING:
+            column.strings.push_back(to_text(value));
+            return {};
+        default:
+            return {};
     }
 }
 
@@ -135,7 +157,8 @@ std::expected<std::shared_ptr<arrow::Array>, std::string> finish_numeric(ColumnB
         return finish_nums(builder, column.doubles, valid);
     }
     if (column.schema.type == ColumnType::TIMESTAMP) {
-        arrow::TimestampBuilder builder(arrow_type(column.schema.type), arrow::default_memory_pool());
+        arrow::TimestampBuilder builder(arrow_type(column.schema.type),
+                                        arrow::default_memory_pool());
         return finish_nums(builder, column.ints, valid);
     }
     arrow::Int64Builder builder;
@@ -150,7 +173,8 @@ std::expected<std::shared_ptr<arrow::Array>, std::string> finish_bool(ColumnBuil
 
 std::expected<std::shared_ptr<arrow::Array>, std::string> finish_string(ColumnBuilder& column) {
     arrow::StringBuilder builder;
-    if (auto ok = check(builder.AppendValues(column.strings, valid_ptr(column))); !ok) return std::unexpected(ok.error());
+    if (auto ok = check(builder.AppendValues(column.strings, valid_ptr(column))); !ok)
+        return std::unexpected(ok.error());
     return finish(builder);
 }
 
@@ -200,9 +224,12 @@ BatchBuilder make_batch_builder(const InferredSchema& schema) {
 }
 
 std::expected<void, std::string> widen_column(ColumnBuilder& column, ColumnType to) {
-    if (to == ColumnType::DOUBLE) widen_to_double(column);
-    else if (to == ColumnType::STRING) widen_to_string(column);
-    else return std::unexpected("unsupported widening target");
+    if (to == ColumnType::DOUBLE)
+        widen_to_double(column);
+    else if (to == ColumnType::STRING)
+        widen_to_string(column);
+    else
+        return std::unexpected("unsupported widening target");
     column.schema.type = to;
     return {};
 }

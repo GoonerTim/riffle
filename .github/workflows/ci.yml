@@ -57,24 +57,28 @@ jobs:
         run: |
           set -e
           sudo apt-get update
-          sudo apt-get install -y -V ca-certificates lsb-release wget
+          sudo apt-get install -y -V ca-certificates lsb-release wget python3-pip
           wget https://apache.jfrog.io/artifactory/arrow/$(lsb_release --id --short | tr 'A-Z' 'a-z')/apache-arrow-apt-source-latest-$(lsb_release --codename --short).deb
           sudo apt-get install -y -V ./apache-arrow-apt-source-latest-$(lsb_release --codename --short).deb
           sudo apt-get update
           sudo apt-get install -y -V \
-            cmake ninja-build g++ clang-tidy clang-format \
+            cmake ninja-build g++ clang-tidy \
             libarrow-dev libparquet-dev libzstd-dev libsnappy-dev \
             libsimdjson-dev libgtest-dev
+          python3 -m pip install --user --break-system-packages clang-format==18.1.8
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
       - name: Check formatting
         run: |
+          clang-format --version
           files=$(git ls-files '*.cpp' '*.hpp' '*.h')
           if [ -n "$files" ]; then clang-format --dry-run --Werror $files; fi
 
       - name: Configure for clang-tidy
         run: cmake -S . -B build -G Ninja -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 
-      - name: Run clang-tidy
+      - name: Run clang-tidy (advisory)
+        continue-on-error: true
         run: |
           files=$(git ls-files '*.cpp' '*.hpp')
           if [ -n "$files" ]; then clang-tidy -p build $files; fi

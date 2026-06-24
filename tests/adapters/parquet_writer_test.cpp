@@ -1,16 +1,16 @@
-#include "riffle/batch.hpp"
-#include "riffle/factories.hpp"
-#include "riffle/types.hpp"
-#include "riffle/writer.hpp"
-
 #include <arrow/api.h>
 #include <arrow/io/file.h>
-#include <parquet/arrow/reader.h>
 #include <gtest/gtest.h>
+#include <parquet/arrow/reader.h>
 
 #include <cstdint>
 #include <memory>
 #include <string>
+
+#include "riffle/batch.hpp"
+#include "riffle/factories.hpp"
+#include "riffle/types.hpp"
+#include "riffle/writer.hpp"
 
 namespace riffle {
 namespace {

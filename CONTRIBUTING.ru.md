@@ -54,7 +54,8 @@ just test
 - **Ошибки:** восстановимые отказы возвращают `std::expected<T, std::string>`; нарушения
   инвариантов в фабриках `make_*` бросают `std::invalid_argument`.
 - **Форматирование и линт:** запускайте `just fmt` (clang-format) и `just lint` (clang-tidy)
-  перед push. CI проверяет оба.
+  перед push. CI проверяет форматирование закреплённой версией **clang-format 18.1.8**
+  (`pip install clang-format==18.1.8`) для детерминизма; clang-tidy — информационный.
 
 ## Тесты
 

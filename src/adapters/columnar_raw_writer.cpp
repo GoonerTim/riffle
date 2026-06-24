@@ -1,11 +1,11 @@
-#include "riffle/writer_backends.hpp"
-
 #include <arrow/api.h>
 
 #include <cstdint>
 #include <fstream>
 #include <ostream>
 #include <string_view>
+
+#include "riffle/writer_backends.hpp"
 
 namespace riffle {
 namespace {
@@ -14,10 +14,18 @@ void put(std::ostream& out, const void* data, std::size_t size) {
     out.write(static_cast<const char*>(data), static_cast<std::streamsize>(size));
 }
 
-void put_u8(std::ostream& out, std::uint8_t value) { put(out, &value, 1); }
-void put_u32(std::ostream& out, std::uint32_t value) { put(out, &value, 4); }
-void put_i64(std::ostream& out, std::int64_t value) { put(out, &value, 8); }
-void put_f64(std::ostream& out, double value) { put(out, &value, 8); }
+void put_u8(std::ostream& out, std::uint8_t value) {
+    put(out, &value, 1);
+}
+void put_u32(std::ostream& out, std::uint32_t value) {
+    put(out, &value, 4);
+}
+void put_i64(std::ostream& out, std::int64_t value) {
+    put(out, &value, 8);
+}
+void put_f64(std::ostream& out, double value) {
+    put(out, &value, 8);
+}
 
 void put_str(std::ostream& out, std::string_view text) {
     put_u32(out, static_cast<std::uint32_t>(text.size()));
@@ -36,12 +44,18 @@ const A& as_array(const arrow::Array& array) {
 
 void write_typed(std::ostream& out, Cell cell, ColumnType type) {
     switch (type) {
-        case ColumnType::INT64: return put_i64(out, as_array<arrow::Int64Array>(cell.array).Value(cell.index));
-        case ColumnType::DOUBLE: return put_f64(out, as_array<arrow::DoubleArray>(cell.array).Value(cell.index));
-        case ColumnType::BOOL: return put_u8(out, as_array<arrow::BooleanArray>(cell.array).Value(cell.index));
-        case ColumnType::TIMESTAMP: return put_i64(out, as_array<arrow::TimestampArray>(cell.array).Value(cell.index));
-        case ColumnType::STRING: return put_str(out, as_array<arrow::StringArray>(cell.array).GetView(cell.index));
-        default: return;
+        case ColumnType::INT64:
+            return put_i64(out, as_array<arrow::Int64Array>(cell.array).Value(cell.index));
+        case ColumnType::DOUBLE:
+            return put_f64(out, as_array<arrow::DoubleArray>(cell.array).Value(cell.index));
+        case ColumnType::BOOL:
+            return put_u8(out, as_array<arrow::BooleanArray>(cell.array).Value(cell.index));
+        case ColumnType::TIMESTAMP:
+            return put_i64(out, as_array<arrow::TimestampArray>(cell.array).Value(cell.index));
+        case ColumnType::STRING:
+            return put_str(out, as_array<arrow::StringArray>(cell.array).GetView(cell.index));
+        default:
+            return;
     }
 }
 

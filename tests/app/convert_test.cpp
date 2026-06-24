@@ -1,14 +1,15 @@
 #include "riffle/convert.hpp"
-#include "riffle/factories.hpp"
-#include "riffle/types.hpp"
 
 #include <arrow/api.h>
 #include <arrow/io/file.h>
-#include <parquet/arrow/reader.h>
 #include <gtest/gtest.h>
+#include <parquet/arrow/reader.h>
 
 #include <fstream>
 #include <string>
+
+#include "riffle/factories.hpp"
+#include "riffle/types.hpp"
 
 namespace riffle {
 namespace {

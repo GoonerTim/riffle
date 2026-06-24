@@ -1,12 +1,12 @@
-#include "riffle/schema.hpp"
-#include "riffle/types.hpp"
-
 #include <gtest/gtest.h>
 
 #include <cstdint>
 #include <initializer_list>
 #include <string>
 #include <utility>
+
+#include "riffle/schema.hpp"
+#include "riffle/types.hpp"
 
 namespace riffle {
 namespace {
@@ -19,10 +19,18 @@ void feed(InferenceSink& sink, FieldList fields) {
     (void)sink.end_row();
 }
 
-CellValue i64(std::int64_t v) { return CellValue{v}; }
-CellValue dbl(double v) { return CellValue{v}; }
-CellValue str(std::string v) { return CellValue{std::move(v)}; }
-CellValue nul() { return CellValue{}; }
+CellValue i64(std::int64_t v) {
+    return CellValue{v};
+}
+CellValue dbl(double v) {
+    return CellValue{v};
+}
+CellValue str(std::string v) {
+    return CellValue{std::move(v)};
+}
+CellValue nul() {
+    return CellValue{};
+}
 
 }
 

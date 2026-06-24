@@ -1,6 +1,4 @@
 #include "riffle/json_parser.hpp"
-#include "riffle/ports.hpp"
-#include "riffle/types.hpp"
 
 #include <gtest/gtest.h>
 
@@ -9,6 +7,9 @@
 #include <utility>
 #include <variant>
 #include <vector>
+
+#include "riffle/ports.hpp"
+#include "riffle/types.hpp"
 
 namespace riffle {
 namespace {

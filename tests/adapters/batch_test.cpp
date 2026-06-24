@@ -1,5 +1,4 @@
 #include "riffle/batch.hpp"
-#include "riffle/types.hpp"
 
 #include <arrow/api.h>
 #include <gtest/gtest.h>
@@ -8,6 +7,8 @@
 #include <initializer_list>
 #include <string>
 #include <utility>
+
+#include "riffle/types.hpp"
 
 namespace riffle {
 namespace {
@@ -21,11 +22,12 @@ void feed(BatchSink& sink, FieldList fields) {
 }
 
 InferredSchema schema_ab() {
-    return {.columns = {{"a", ColumnType::INT64, true, "a"},
-                        {"b", ColumnType::STRING, true, "b"}}};
+    return {.columns = {{"a", ColumnType::INT64, true, "a"}, {"b", ColumnType::STRING, true, "b"}}};
 }
 
-CellValue i64(std::int64_t v) { return CellValue{v}; }
+CellValue i64(std::int64_t v) {
+    return CellValue{v};
+}
 
 }
 

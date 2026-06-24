@@ -1,7 +1,7 @@
+#include <gtest/gtest.h>
+
 #include "riffle/schema.hpp"
 #include "riffle/types.hpp"
-
-#include <gtest/gtest.h>
 
 namespace riffle {
 namespace {

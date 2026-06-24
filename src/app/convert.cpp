@@ -109,8 +109,8 @@ std::expected<void, std::string> on_bad_line(Ctx& ctx, std::string_view line, st
     if (ctx.sink.fatal() || ctx.cfg.on_error == OnError::ABORT) return std::unexpected(reason);
     ++ctx.stats.rows_skipped;
     if (ctx.cfg.on_error == OnError::COLLECT) {
-        ctx.stats.errors.push_back(
-            make_ParseError({.line_no = ctx.line_no, .reason = std::move(reason), .raw = std::string(line)}));
+        ctx.stats.errors.push_back(make_ParseError(
+            {.line_no = ctx.line_no, .reason = std::move(reason), .raw = std::string(line)}));
     }
     return {};
 }

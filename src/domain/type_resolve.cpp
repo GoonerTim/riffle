@@ -1,7 +1,7 @@
-#include "riffle/schema.hpp"
-
 #include <algorithm>
 #include <vector>
+
+#include "riffle/schema.hpp"
 
 namespace riffle {
 namespace {
@@ -16,9 +16,8 @@ std::vector<ColumnType> distinct_non_null(std::span<const ColumnType> seen) {
 }
 
 bool all_numeric(const std::vector<ColumnType>& types) {
-    return std::ranges::all_of(types, [](ColumnType t) {
-        return t == ColumnType::INT64 || t == ColumnType::DOUBLE;
-    });
+    return std::ranges::all_of(
+        types, [](ColumnType t) { return t == ColumnType::INT64 || t == ColumnType::DOUBLE; });
 }
 
 ColumnType widen(const std::vector<ColumnType>& types) {

@@ -1,11 +1,12 @@
 #include "riffle/args.hpp"
-#include "riffle/types.hpp"
 
 #include <gtest/gtest.h>
 
 #include <fstream>
 #include <string>
 #include <vector>
+
+#include "riffle/types.hpp"
 
 namespace riffle {
 namespace {
@@ -25,8 +26,8 @@ TEST(ParseArgs, ReadsInputAndOutput) {
 }
 
 TEST(ParseArgs, ReadsCompressionAndOnError) {
-    auto cfg = parse({"in.jsonl", "-o", "o.parquet", "--compression", "snappy",
-                      "--on-error", "collect"});
+    auto cfg =
+        parse({"in.jsonl", "-o", "o.parquet", "--compression", "snappy", "--on-error", "collect"});
     ASSERT_TRUE(cfg.has_value());
     EXPECT_EQ(cfg->compression, CompressionCodec::SNAPPY);
     EXPECT_EQ(cfg->on_error, OnError::COLLECT);

@@ -25,11 +25,16 @@ CellValue number_cell(od::value value) {
 
 CellValue cell_of(od::value value) {
     switch (value.type()) {
-        case od::json_type::number: return number_cell(value);
-        case od::json_type::boolean: return CellValue{value.get_bool().value()};
-        case od::json_type::null: return CellValue{};
-        case od::json_type::string: return CellValue{std::string(value.get_string().value())};
-        default: return CellValue{std::string(value.raw_json().value())};
+        case od::json_type::number:
+            return number_cell(value);
+        case od::json_type::boolean:
+            return CellValue{value.get_bool().value()};
+        case od::json_type::null:
+            return CellValue{};
+        case od::json_type::string:
+            return CellValue{std::string(value.get_string().value())};
+        default:
+            return CellValue{std::string(value.raw_json().value())};
     }
 }
 

@@ -1,13 +1,13 @@
-#include "riffle/batch.hpp"
-#include "riffle/factories.hpp"
-#include "riffle/types.hpp"
-#include "riffle/writer.hpp"
-
 #include <gtest/gtest.h>
 
 #include <cstdint>
 #include <fstream>
 #include <string>
+
+#include "riffle/batch.hpp"
+#include "riffle/factories.hpp"
+#include "riffle/types.hpp"
+#include "riffle/writer.hpp"
 
 namespace riffle {
 namespace {

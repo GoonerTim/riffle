@@ -1,19 +1,21 @@
-#include "riffle/writer_backends.hpp"
-
 #include <arrow/api.h>
 #include <arrow/io/file.h>
 #include <parquet/arrow/writer.h>
 
 #include "riffle/writer.hpp"
+#include "riffle/writer_backends.hpp"
 
 namespace riffle {
 namespace {
 
 arrow::Compression::type to_codec(CompressionCodec codec) {
     switch (codec) {
-        case CompressionCodec::SNAPPY: return arrow::Compression::SNAPPY;
-        case CompressionCodec::ZSTD: return arrow::Compression::ZSTD;
-        default: return arrow::Compression::UNCOMPRESSED;
+        case CompressionCodec::SNAPPY:
+            return arrow::Compression::SNAPPY;
+        case CompressionCodec::ZSTD:
+            return arrow::Compression::ZSTD;
+        default:
+            return arrow::Compression::UNCOMPRESSED;
     }
 }
 
@@ -50,9 +52,9 @@ std::expected<std::unique_ptr<Writer>, std::string> open_parquet_writer(
     const Config& config, const InferredSchema& schema) {
     auto sink = arrow::io::FileOutputStream::Open(config.output_path);
     if (!sink.ok()) return std::unexpected(sink.status().ToString());
-    auto writer = parquet::arrow::FileWriter::Open(*arrow_schema_of(schema),
-                                                   arrow::default_memory_pool(), *sink,
-                                                   make_props(config.compression));
+    auto writer =
+        parquet::arrow::FileWriter::Open(*arrow_schema_of(schema), arrow::default_memory_pool(),
+                                         *sink, make_props(config.compression));
     if (!writer.ok()) return std::unexpected(writer.status().ToString());
     return std::make_unique<ParquetWriter>(std::move(*writer), *sink);
 }

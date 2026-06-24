@@ -1,10 +1,11 @@
-#include "riffle/constants.hpp"
 #include "riffle/factories.hpp"
-#include "riffle/types.hpp"
 
 #include <gtest/gtest.h>
 
 #include <stdexcept>
+
+#include "riffle/constants.hpp"
+#include "riffle/types.hpp"
 
 namespace riffle {
 
@@ -15,8 +16,8 @@ TEST(MakeColumnSchema, DefaultsJsonPathToName) {
 }
 
 TEST(MakeColumnSchema, KeepsExplicitJsonPath) {
-    auto col = make_ColumnSchema(
-        {.name = "code", .type = ColumnType::INT64, .json_path = "req.code"});
+    auto col =
+        make_ColumnSchema({.name = "code", .type = ColumnType::INT64, .json_path = "req.code"});
     EXPECT_EQ(col.json_path, "req.code");
 }
 
@@ -26,14 +27,14 @@ TEST(MakeColumnSchema, RejectsEmptyName) {
 }
 
 TEST(MakeInferredSchema, AcceptsUniqueNames) {
-    InferredSchema draft{.columns = {{"a", ColumnType::INT64, true, "a"},
-                                     {"b", ColumnType::STRING, true, "b"}}};
+    InferredSchema draft{
+        .columns = {{"a", ColumnType::INT64, true, "a"}, {"b", ColumnType::STRING, true, "b"}}};
     EXPECT_EQ(make_InferredSchema(draft).columns.size(), 2u);
 }
 
 TEST(MakeInferredSchema, RejectsDuplicateNames) {
-    InferredSchema draft{.columns = {{"a", ColumnType::INT64, true, "a"},
-                                     {"a", ColumnType::STRING, true, "a"}}};
+    InferredSchema draft{
+        .columns = {{"a", ColumnType::INT64, true, "a"}, {"a", ColumnType::STRING, true, "a"}}};
     EXPECT_THROW(make_InferredSchema(draft), std::invalid_argument);
 }
 
@@ -46,13 +47,11 @@ TEST(MakeParseError, RejectsEmptyReason) {
 }
 
 TEST(MakeConfig, RejectsEmptyInputs) {
-    EXPECT_THROW(make_Config({.inputs = {}, .output_path = "o.parquet"}),
-                 std::invalid_argument);
+    EXPECT_THROW(make_Config({.inputs = {}, .output_path = "o.parquet"}), std::invalid_argument);
 }
 
 TEST(MakeConfig, RejectsEmptyOutput) {
-    EXPECT_THROW(make_Config({.inputs = {"a.jsonl"}, .output_path = ""}),
-                 std::invalid_argument);
+    EXPECT_THROW(make_Config({.inputs = {"a.jsonl"}, .output_path = ""}), std::invalid_argument);
 }
 
 TEST(MakeConfig, AppliesDefaults) {

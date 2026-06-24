@@ -11,3 +11,4 @@ PointerAlignment: Left
 AllowShortFunctionsOnASingleLine: Inline
 SortIncludes: true
 IncludeBlocks: Regroup
+FixNamespaceComments: false

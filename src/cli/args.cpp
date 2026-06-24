@@ -10,8 +10,8 @@ namespace {
 
 bool is_value_option(std::string_view token) {
     return token == "-o" || token == "--output" || token == "--format" ||
-           token == "--compression" || token == "--on-error" ||
-           token == "--type-conflict" || token == "--batch-rows" || token == "--schema";
+           token == "--compression" || token == "--on-error" || token == "--type-conflict" ||
+           token == "--batch-rows" || token == "--schema";
 }
 
 std::expected<void, std::string> set_schema(Config& draft, const std::string& path) {
@@ -78,7 +78,8 @@ std::expected<Config, std::string> parse_args(std::span<const std::string> args)
             draft.emit_stats = true;
         } else if (is_value_option(token)) {
             if (i + 1 >= args.size()) return std::unexpected("missing value for " + token);
-            if (auto ok = apply_value(draft, token, args[++i]); !ok) return std::unexpected(ok.error());
+            if (auto ok = apply_value(draft, token, args[++i]); !ok)
+                return std::unexpected(ok.error());
         } else if (is_unknown_option(token)) {
             return std::unexpected("unknown option " + token);
         } else {

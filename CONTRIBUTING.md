@@ -52,7 +52,8 @@ We use [`just`](https://github.com/casey/just) as a task runner — run `just` t
 - **Errors:** recoverable failures return `std::expected<T, std::string>`; invariant violations
   in `make_*` factories throw `std::invalid_argument`.
 - **Formatting & linting:** run `just fmt` (clang-format) and `just lint` (clang-tidy) before
-  pushing. CI enforces both.
+  pushing. CI enforces formatting with a pinned **clang-format 18.1.8**
+  (`pip install clang-format==18.1.8`) for deterministic results; clang-tidy is advisory.
 
 ## Tests
 

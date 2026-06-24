@@ -1,7 +1,8 @@
 #include "riffle/schema_json.hpp"
-#include "riffle/types.hpp"
 
 #include <gtest/gtest.h>
+
+#include "riffle/types.hpp"
 
 namespace riffle {
 
