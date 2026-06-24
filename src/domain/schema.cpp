@@ -16,7 +16,7 @@ namespace {
 
 ColumnType infer_type(const CellValue& value) {
     auto type = column_type_of(value);
-    if (type == ColumnType::STRING && looks_like_timestamp(std::get<std::string>(value))) {
+    if (type == ColumnType::STRING && looks_like_timestamp(std::get<std::string_view>(value))) {
         return ColumnType::TIMESTAMP;
     }
     return type;

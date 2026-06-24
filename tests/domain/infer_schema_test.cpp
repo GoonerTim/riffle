@@ -25,8 +25,8 @@ CellValue i64(std::int64_t v) {
 CellValue dbl(double v) {
     return CellValue{v};
 }
-CellValue str(std::string v) {
-    return CellValue{std::move(v)};
+CellValue str(std::string_view v) {
+    return CellValue{v};
 }
 CellValue nul() {
     return CellValue{};

@@ -32,9 +32,9 @@ CellValue cell_of(od::value value) {
         case od::json_type::null:
             return CellValue{};
         case od::json_type::string:
-            return CellValue{std::string(value.get_string().value())};
+            return CellValue{value.get_string().value()};
         default:
-            return CellValue{std::string(value.raw_json().value())};
+            return CellValue{value.raw_json().value()};
     }
 }
 

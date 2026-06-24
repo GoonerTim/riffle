@@ -40,7 +40,7 @@ std::string to_text(const CellValue& value) {
     if (auto* v = std::get_if<std::int64_t>(&value)) return std::to_string(*v);
     if (auto* v = std::get_if<double>(&value)) return std::to_string(*v);
     if (auto* v = std::get_if<bool>(&value)) return *v ? "true" : "false";
-    if (auto* v = std::get_if<std::string>(&value)) return *v;
+    if (auto* v = std::get_if<std::string_view>(&value)) return std::string(*v);
     return {};
 }
 
@@ -85,10 +85,10 @@ std::expected<void, std::string> push_bool(ColumnBuilder& column, const CellValu
 }
 
 std::expected<void, std::string> push_timestamp(ColumnBuilder& column, const CellValue& value) {
-    auto* text = std::get_if<std::string>(&value);
+    auto* text = std::get_if<std::string_view>(&value);
     if (!text) return std::unexpected("timestamp column got non-string value");
     auto micros = parse_timestamp_us(*text);
-    if (!micros) return std::unexpected("invalid timestamp: " + *text);
+    if (!micros) return std::unexpected("invalid timestamp: " + std::string(*text));
     column.ints.push_back(*micros);
     return {};
 }
@@ -246,7 +246,7 @@ std::expected<void, std::string> ensure_fits(ColumnBuilder& column, const CellVa
 }
 
 std::size_t value_bytes(const CellValue& value) {
-    if (const auto* s = std::get_if<std::string>(&value)) return s->size() + 1;
+    if (const auto* s = std::get_if<std::string_view>(&value)) return s->size() + 1;
     return sizeof(std::int64_t) + 1;
 }
 

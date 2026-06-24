@@ -18,7 +18,7 @@ class RecordSink : public RowSink {
 public:
     void begin_row() override { ++rows; }
     std::expected<void, std::string> field(std::string_view path, CellValue value) override {
-        fields.emplace_back(std::string(path), std::move(value));
+        fields.emplace_back(std::string(path), value);
         return {};
     }
     std::expected<void, std::string> end_row() override { return {}; }
@@ -41,7 +41,7 @@ TEST(JsonParser, ParsesScalarFields) {
     RecordSink sink;
     ASSERT_TRUE(parser.parse(R"({"a":1,"b":"x","c":true})", sink).has_value());
     EXPECT_EQ(std::get<std::int64_t>(*sink.get("a")), 1);
-    EXPECT_EQ(std::get<std::string>(*sink.get("b")), "x");
+    EXPECT_EQ(std::get<std::string_view>(*sink.get("b")), "x");
     EXPECT_EQ(std::get<bool>(*sink.get("c")), true);
 }
 

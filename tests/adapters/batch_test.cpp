@@ -34,8 +34,8 @@ CellValue i64(std::int64_t v) {
 TEST(Batch, BuildsColumnsFromRows) {
     auto builder = make_batch_builder(schema_ab());
     BatchSink sink(builder, TypeConflictPolicy::WIDEN);
-    feed(sink, {{"a", i64(1)}, {"b", CellValue{std::string("x")}}});
-    feed(sink, {{"a", i64(2)}, {"b", CellValue{std::string("y")}}});
+    feed(sink, {{"a", i64(1)}, {"b", CellValue{std::string_view("x")}}});
+    feed(sink, {{"a", i64(2)}, {"b", CellValue{std::string_view("y")}}});
     auto batch = build_batch(builder);
     ASSERT_TRUE(batch.has_value());
     EXPECT_EQ(batch->n_rows, 2u);
@@ -60,7 +60,7 @@ TEST(Batch, TimestampColumnParsesIso) {
     InferredSchema schema{.columns = {{"ts", ColumnType::TIMESTAMP, true, "ts"}}};
     auto builder = make_batch_builder(schema);
     BatchSink sink(builder, TypeConflictPolicy::WIDEN);
-    feed(sink, {{"ts", CellValue{std::string("1970-01-01T00:00:01Z")}}});
+    feed(sink, {{"ts", CellValue{std::string_view("1970-01-01T00:00:01Z")}}});
     auto batch = build_batch(builder);
     ASSERT_TRUE(batch.has_value());
     auto ts = std::static_pointer_cast<arrow::TimestampArray>(batch->data->column(0));
@@ -85,7 +85,7 @@ TEST(Batch, AutoWidensIncompatibleToString) {
     auto builder = make_batch_builder(schema);
     BatchSink sink(builder, TypeConflictPolicy::WIDEN);
     feed(sink, {{"v", i64(7)}});
-    feed(sink, {{"v", CellValue{std::string("hi")}}});
+    feed(sink, {{"v", CellValue{std::string_view("hi")}}});
     auto batch = build_batch(builder);
     ASSERT_TRUE(batch.has_value());
     auto v = std::static_pointer_cast<arrow::StringArray>(batch->data->column(0));

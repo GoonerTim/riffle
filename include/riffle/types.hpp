@@ -13,7 +13,7 @@
 
 namespace riffle {
 
-using CellValue = std::variant<std::monostate, std::int64_t, double, bool, std::string>;
+using CellValue = std::variant<std::monostate, std::int64_t, double, bool, std::string_view>;
 
 enum class ColumnType { INT64, DOUBLE, BOOL, STRING, TIMESTAMP, NULLTYPE };
 

@@ -17,7 +17,7 @@ between "grep the log by hand" and "spin up Spark/pandas/DuckDB for one conversi
   size of the input, not the size of the file. This is the headline feature: convert files
   **larger than RAM**.
 - **Fast single-core** — SIMD JSON parsing ([simdjson](https://github.com/simdjson/simdjson))
-  on-demand and batched columnar appends sustain **~100 MB/s** of input on one core.
+  on-demand and batched columnar appends sustain **~115 MB/s** of input on one core.
 - **Zero-config** — the column schema is **inferred** from the data, with an optional explicit
   `--schema` override when inference guesses wrong.
 - **One static binary** — no Python/JVM runtime. Drops cleanly into pipelines and containers.
@@ -69,11 +69,11 @@ That flat line is why Riffle converts files **larger than RAM** on a laptop wher
 
 ![Throughput comparison](docs/img/bench_throughput.png)
 
-Riffle is **not** the throughput leader. DuckDB (~350–595 MB/s) and PyArrow (~280–405 MB/s) are
-faster; Riffle sustains **~100 MB/s**, ahead of pandas (~40 MB/s). Parsing uses the simdjson
-**on-demand** API, fields are written **straight into column builders** (no intermediate row
-object, no per-field path allocation), and Arrow appends are **batched** per column. The
-remaining cost is Arrow array construction and per-line reading; compression codec barely moves it.
+Riffle is **not** the throughput leader. DuckDB (~355–595 MB/s) and PyArrow (~260–395 MB/s) are
+faster; Riffle sustains **~115 MB/s**, ahead of pandas (~35 MB/s). Parsing uses the simdjson
+**on-demand** API with `string_view`-backed cells (no per-field allocation), fields are written
+**straight into column builders**, and Arrow appends are **batched** per column. The remaining
+cost is Arrow array construction and string materialization; compression codec barely moves it.
 
 ### Where Riffle wins / where it doesn't
 
@@ -81,7 +81,7 @@ remaining cost is Arrow array construction and per-line reading; compression cod
 | ---------------------------------- | --------------------- | ------ | ------- | ------ |
 | Peak memory, flat with input size  | ✅ ~80 MB, constant    | ⚠️ grows | ❌ grows | ❌ huge |
 | Converts files larger than RAM     | ✅                     | ⚠️      | ❌       | ❌      |
-| Raw throughput                     | ⚠️ ~80 MB/s            | ✅      | ✅       | ❌      |
+| Raw throughput                     | ⚠️ ~115 MB/s           | ✅      | ✅       | ❌      |
 | Single static binary, no runtime   | ✅                     | ❌ (lib) | ❌ (lib) | ❌ (lib) |
 
 **Bottom line:** if you need raw speed on data that fits in memory, DuckDB is excellent. If you

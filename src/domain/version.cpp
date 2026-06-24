@@ -3,7 +3,7 @@
 namespace riffle {
 
 std::string_view version() {
-    return "0.1.2";
+    return "0.1.3";
 }
 
 }
