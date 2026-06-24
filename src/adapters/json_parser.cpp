@@ -42,7 +42,7 @@ std::expected<void, std::string> walk(od::object object, std::string_view prefix
 
 std::expected<void, std::string> walk_field(od::field field, std::string_view prefix, int depth,
                                             RowSink& sink) {
-    std::string_view key = field.unescaped_key().value();
+    std::string_view key = field.unescaped_key(false).value();
     od::value value = field.value();
     if (value.type() == od::json_type::object && depth + 1 < MAX_FLATTEN_DEPTH) {
         return walk(value.get_object(), join_path(prefix, key), depth + 1, sink);
