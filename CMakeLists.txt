@@ -23,6 +23,7 @@ add_library(riffle_core
   src/domain/version.cpp
   src/domain/types.cpp
   src/domain/factories.cpp
+  src/domain/type_resolve.cpp
 )
 target_include_directories(riffle_core PUBLIC include)
 target_link_libraries(riffle_core
@@ -46,6 +47,7 @@ add_executable(riffle_tests
   tests/domain/version_test.cpp
   tests/domain/types_test.cpp
   tests/domain/factories_test.cpp
+  tests/domain/type_resolve_test.cpp
 )
 target_link_libraries(riffle_tests
   PRIVATE riffle_core GTest::gtest GTest::gtest_main GTest::gmock
