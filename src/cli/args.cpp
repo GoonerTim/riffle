@@ -14,8 +14,9 @@ namespace {
 bool is_value_option(std::string_view token) {
     return token == "-o" || token == "--output" || token == "--format" ||
            token == "--compression" || token == "--on-error" || token == "--type-conflict" ||
-           token == "--batch-rows" || token == "--batch-bytes" || token == "--schema" ||
-           token == "--select" || token == "--exclude" || token == "--rename";
+           token == "--batch-rows" || token == "--batch-bytes" || token == "--threads" ||
+           token == "--schema" || token == "--select" || token == "--exclude" ||
+           token == "--rename";
 }
 
 std::vector<std::string> split_csv(const std::string& value) {
@@ -78,6 +79,7 @@ std::expected<void, std::string> apply_value(Config& draft, std::string_view key
     if (key == "--schema") return set_schema(draft, value);
     if (key == "--batch-rows") return parse_size(draft.batch_rows, key, value);
     if (key == "--batch-bytes") return parse_size(draft.batch_bytes, key, value);
+    if (key == "--threads") return parse_size(draft.threads, key, value);
     if (key == "--select") {
         draft.projection.select = split_csv(value);
         return {};

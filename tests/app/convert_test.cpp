@@ -68,6 +68,53 @@ TEST(Convert, AppliesSelectAndRename) {
     EXPECT_EQ(table->schema()->field(1)->name(), "id");
 }
 
+TEST(Convert, MultiThreadedMatchesSingleThreadedOutput) {
+    std::string body;
+    const int rows = 2000;
+    for (int i = 0; i < rows; ++i) {
+        body += R"({"id":)" + std::to_string(i) + R"(,"level":")" + (i % 2 ? "info" : "error") +
+                R"(","v":)" + std::to_string(i * 0.5) + "}\n";
+    }
+    auto in = write_file("c_mt.jsonl", body);
+    auto out1 = ::testing::TempDir() + "c_mt1.parquet";
+    auto out4 = ::testing::TempDir() + "c_mt4.parquet";
+
+    auto cfg1 = config_for(in, out1);
+    cfg1.batch_rows = 128;
+    auto cfg4 = config_for(in, out4);
+    cfg4.batch_rows = 128;
+    cfg4.threads = 4;
+
+    auto s1 = convert(cfg1);
+    auto s4 = convert(cfg4);
+    EXPECT_EQ(s1.final_state, PipelineState::DONE);
+    EXPECT_EQ(s4.final_state, PipelineState::DONE);
+    EXPECT_EQ(s4.rows_written, static_cast<std::size_t>(rows));
+    EXPECT_EQ(s1.rows_written, s4.rows_written);
+
+    auto t1 = read_parquet(out1);
+    auto t4 = read_parquet(out4);
+    ASSERT_NE(t1, nullptr);
+    ASSERT_NE(t4, nullptr);
+    EXPECT_TRUE(t1->Equals(*t4));
+}
+
+TEST(Convert, MultiThreadedSkipsMalformedLines) {
+    std::string body;
+    for (int i = 0; i < 500; ++i) body += "{\"v\":" + std::to_string(i) + "}\n";
+    body += "broken\n";
+    for (int i = 500; i < 1000; ++i) body += "{\"v\":" + std::to_string(i) + "}\n";
+    auto in = write_file("c_mtskip.jsonl", body);
+    auto out = ::testing::TempDir() + "c_mtskip.parquet";
+    auto cfg = config_for(in, out);
+    cfg.batch_rows = 64;
+    cfg.threads = 3;
+    auto stats = convert(cfg);
+    EXPECT_EQ(stats.final_state, PipelineState::DONE);
+    EXPECT_EQ(stats.rows_written, 1000u);
+    EXPECT_EQ(stats.rows_skipped, 1u);
+}
+
 TEST(Convert, ReadsGzipInputTransparently) {
     auto in = write_gzip("c_gz.jsonl.gz", "{\"code\":200}\n{\"code\":404}\n{\"code\":500}\n");
     auto out = ::testing::TempDir() + "c_gz.parquet";

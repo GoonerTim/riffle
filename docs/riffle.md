@@ -139,7 +139,8 @@ python -c "import pyarrow.parquet as pq; print(pq.read_table('sample.parquet').t
 | Не распределённая обработка  | Один процесс, одна машина                                                                   |
 | Ограниченная вложенность     | Вложенные объекты разворачиваются в плоские колонки по пути (`a.b.c`) до `MAX_FLATTEN_DEPTH`; глубже — сериализуются как `string` |
 | Не GUI                       | Только библиотека и CLI                                                                     |
-| Однопоточность               | Горячий путь однопоточный; параллелизм — отдельная задача                                    |
+| Многопоточность (опц.)       | По умолчанию один поток; `--threads N` распараллеливает парсинг/сборку с детерминированным выводом и ограниченной памятью |
+| Только плоские колонки       | Вложенные объекты разворачиваются в dotted-колонки; нативные Parquet-struct/list пока не поддержаны |
 | Без сетевого ввода/вывода    | Источники — локальные файлы и `stdin`; выход — локальный файл                               |
 | Межбатчевое расширение типов | Авто-widen работает до первого сброса row-group; потоковый Parquet фиксирует схему после коммита |
 
@@ -276,6 +277,7 @@ struct Config {
     CompressionCodec         compression    = CompressionCodec::ZSTD;
     std::size_t              batch_rows      = DEFAULT_BATCH_ROWS;
     std::size_t              batch_bytes     = MAX_BATCH_BYTES;
+    std::size_t              threads         = 1;     // >1 → parallel pipeline
     OnError                  on_error        = OnError::SKIP;
     TypeConflictPolicy       type_conflict   = TypeConflictPolicy::WIDEN;
     bool                     emit_stats      = false;
@@ -383,18 +385,33 @@ public:
 > Модель ошибок: восстановимые отказы — `std::expected<T, std::string>`; нарушение инварианта
 > в фабриках `make_*` — исключение `std::invalid_argument`.
 
-### Чтение: LineReader
+### Чтение: LineReader и ByteSource
 
-`include/riffle/reader.hpp`. Потоково выдаёт непустые логические строки из `std::istream`,
-толерантен к CRLF. Читает чанками по `READ_BUFFER_BYTES` в **переиспользуемый внутренний
-буфер** и возвращает `std::optional<std::string_view>` в него — без аллокации на строку (view
-действителен до следующего `next()`). Строка длиннее `MAX_LINE_BYTES` **усекается** до лимита
-(остаток физической строки пропускается) — память ограничена даже на патологическом входе без
-переводов строки; усечённая строка обычно не парсится как JSON и обрабатывается по `OnError`.
+`include/riffle/reader.hpp`, `include/riffle/input.hpp`. `LineReader` потоково выдаёт непустые
+логические строки из порта `ByteSource`, толерантен к CRLF. Читает чанками по `READ_BUFFER_BYTES`
+в **переиспользуемый внутренний буфер** и возвращает `std::optional<std::string_view>` в него —
+без аллокации на строку (view действителен до следующего `next()`). Строка длиннее
+`MAX_LINE_BYTES` **усекается** (остаток физической строки пропускается) — память ограничена даже
+на патологическом входе; усечённая строка обычно не парсится как JSON и идёт по `OnError`.
+
+`open_input(path)` создаёт `ByteSource` на базе Arrow IO: `-` → stdin, `*.gz`/`*.zst` —
+**прозрачная распаковка** (Arrow-кодеки), иначе обычный файл. Тесты используют `StdByteSource`
+поверх `std::istream`.
 
 ```cpp
 std::optional<std::string_view> LineReader::next();
+std::unique_ptr<ByteSource> open_input(const std::string& path);
 ```
+
+### Многопоточность: convert(--threads)
+
+При `threads == 1` — однопроходный потоковый путь (`run_single`). При `threads > 1` запускается
+конвейер с ограниченной памятью: продюсер режет вход на чанки по `batch_rows` строк, N воркеров
+парсят и строят `RecordBatch` (со схемой, **фиксированной из сэмпла** — widening отключён, чтобы
+схемы чанков совпадали), а единый писатель сливает батчи **строго в порядке seq**. Это даёт
+**детерминированный, byte-identical вывод** независимо от числа потоков и постоянную память
+(число «в полёте» чанков ограничено семафором). Битые строки и политика `OnError` обрабатываются
+по-чанково и сводятся в порядке seq. Замер: ~120 → ~380 МБ/с при 1 → 8 потоках (см. README).
 
 ### Парсинг: JsonParser
 
@@ -554,6 +571,7 @@ int main() {
 | `--compression`     | `none` \| `snappy` \| `zstd`   | `zstd`       | `compression`                       |
 | `--batch-rows`      | целое                          | `65536`      | `batch_rows`                        |
 | `--batch-bytes`     | целое                          | 256 МиБ      | `batch_bytes` (байтовый порог сброса батча) |
+| `--threads`         | целое                          | `1`          | `threads` (число рабочих потоков)   |
 | `--on-error`        | `skip` \| `abort` \| `collect` | `skip`       | `on_error`                          |
 | `--type-conflict`   | `widen` \| `string` \| `error` | `widen`      | `type_conflict`                     |
 | `--select`          | `col,col,...`                  | все          | `projection.select`                 |

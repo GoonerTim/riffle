@@ -23,7 +23,8 @@ Checks: >
   -readability-implicit-bool-conversion,
   -readability-isolate-declaration,
   -readability-else-after-return,
-  -readability-qualified-auto
+  -readability-qualified-auto,
+  -clang-diagnostic-deprecated-declarations
 WarningsAsErrors: 'bugprone-*,performance-*,clang-analyzer-*,modernize-*,readability-*'
 HeaderFilterRegex: 'riffle/(src|include)/'
 FormatStyle: file

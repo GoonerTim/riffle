@@ -36,6 +36,7 @@ Config make_Config(Config draft) {
     require(!draft.output_path.empty() || draft.print_schema,
             "Config.output_path must not be empty");
     require(draft.batch_rows >= 1, "Config.batch_rows must be >= 1");
+    require(draft.threads >= 1, "Config.threads must be >= 1");
     return draft;
 }
 

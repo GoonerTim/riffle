@@ -70,6 +70,7 @@ struct Config {
     CompressionCodec compression = CompressionCodec::ZSTD;
     std::size_t batch_rows = DEFAULT_BATCH_ROWS;
     std::size_t batch_bytes = MAX_BATCH_BYTES;
+    std::size_t threads = 1;
     OnError on_error = OnError::SKIP;
     TypeConflictPolicy type_conflict = TypeConflictPolicy::WIDEN;
     bool emit_stats = false;

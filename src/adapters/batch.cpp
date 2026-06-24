@@ -252,8 +252,11 @@ std::size_t value_bytes(const CellValue& value) {
 
 }
 
-BatchSink::BatchSink(BatchBuilder& builder, TypeConflictPolicy policy)
-    : builder_(builder), policy_(policy), seen_(builder.columns.size(), 0) {
+BatchSink::BatchSink(BatchBuilder& builder, TypeConflictPolicy policy, bool allow_widen)
+    : builder_(builder),
+      policy_(policy),
+      allow_widen_(allow_widen),
+      seen_(builder.columns.size(), 0) {
     for (std::size_t i = 0; i < builder_.columns.size(); ++i) {
         index_.emplace(builder_.columns[i].schema.json_path, i);
     }
@@ -263,6 +266,9 @@ std::expected<void, std::string> BatchSink::field(std::string_view path, CellVal
     auto it = index_.find(path);
     if (it == index_.end() || seen_[it->second]) return {};
     auto& column = builder_.columns[it->second];
+    if (!allow_widen_ && !cell_fits(column.schema.type, value)) {
+        return std::unexpected("value does not fit fixed schema column");
+    }
     if (auto ok = ensure_fits(column, value, policy_); !ok) {
         fatal_ = true;
         return ok;

@@ -75,6 +75,15 @@ faster; Riffle sustains **~115 MB/s**, ahead of pandas (~35 MB/s). Parsing uses 
 **straight into column builders**, and Arrow appends are **batched** per column. The remaining
 cost is Arrow array construction and string materialization; compression codec barely moves it.
 
+### Scaling with `--threads`
+
+![Throughput vs threads](docs/img/bench_threads.png)
+
+Single-threaded throughput is mid-pack, but conversion parallelizes across cores: with
+`--threads 8` Riffle reaches **~380 MB/s** on the 120 MB dataset — into DuckDB/PyArrow territory —
+while keeping the same flat, bounded memory and **byte-identical, deterministic output**
+(workers parse+build chunks; a single writer emits batches in input order).
+
 ### Where Riffle wins / where it doesn't
 
 | Criterion                          | Riffle                | duckdb | pyarrow | pandas |
@@ -91,10 +100,12 @@ binary, that is exactly what Riffle is for.
 ## Status
 
 🚧 **Working MVP.** JSON-lines → Parquet (and `columnar-raw`) conversion works end-to-end
-(library + CLI), built test-first with 80+ tests. C++23. Schema is inferred (including ISO-8601
+(library + CLI), built test-first with 100+ tests. C++23. Schema is inferred (including ISO-8601
 timestamps); nested objects are flattened; column types auto-widen beyond the inference sample;
-`--schema` JSON override is supported in the CLI. Known limitation: cross-batch widening is
-bounded by the first row-group flush (streaming Parquet fixes the schema once committed).
+`--schema` JSON override, column projection (`--select`/`--exclude`/`--rename`), transparent
+gzip/zstd input, and multi-threaded conversion (`--threads`, deterministic output) are supported.
+Known limitations: with `--threads > 1` the schema is fixed from the inference sample (no
+cross-batch widening); nested data is flattened to dotted columns, not native Parquet structs.
 
 ## Quick start
 
@@ -126,8 +137,11 @@ cmake --build build -j
 # File -> Parquet (schema inferred automatically)
 riffle events.jsonl -o events.parquet
 
-# Stream from stdin, zstd compression, 100k-row batches
-gunzip -c huge.jsonl.gz | riffle - -o out.parquet --compression zstd --batch-rows 100000
+# Gzip/zstd input is decompressed transparently (by extension)
+riffle huge.jsonl.gz -o out.parquet
+
+# Parallel conversion across cores (deterministic output, bounded memory)
+riffle huge.jsonl -o out.parquet --threads 8
 
 # Multiple files via glob + explicit schema override
 riffle 'logs/*.jsonl' -o merged.parquet --schema schema.json
@@ -159,6 +173,8 @@ int main() {
 | `--schema`          | path to JSON                   | none      | Explicit schema, overrides inference    |
 | `--compression`     | `none` \| `snappy` \| `zstd`   | `zstd`    | Parquet codec                           |
 | `--batch-rows`      | integer                        | `65536`   | Rows per batch                          |
+| `--batch-bytes`     | integer                        | 256 MiB   | Byte cap per batch                      |
+| `--threads`         | integer                        | `1`       | Parallel worker threads                 |
 | `--on-error`        | `skip` \| `abort` \| `collect` | `skip`    | Policy for malformed lines              |
 | `--type-conflict`   | `widen` \| `string` \| `error` | `widen`   | Column type-conflict resolution         |
 | `--select`          | `col,col,...`                  | all       | Keep only these columns (in this order) |

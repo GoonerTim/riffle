@@ -41,7 +41,8 @@ InferredSchema bench_schema() {
 
 static double time_read(const std::string& path) {
     std::ifstream in(path);
-    LineReader reader(in);
+    StdByteSource src(in);
+    LineReader reader(src);
     auto start = Clock::now();
     std::size_t n = 0;
     for (auto line = reader.next(); line; line = reader.next()) n += line->size();
@@ -51,7 +52,8 @@ static double time_read(const std::string& path) {
 
 static double time_read_parse(const std::string& path) {
     std::ifstream in(path);
-    LineReader reader(in);
+    StdByteSource src(in);
+    LineReader reader(src);
     JsonParser parser;
     CountSink sink;
     auto start = Clock::now();
@@ -61,7 +63,8 @@ static double time_read_parse(const std::string& path) {
 
 static double time_read_parse_append(const std::string& path) {
     std::ifstream in(path);
-    LineReader reader(in);
+    StdByteSource src(in);
+    LineReader reader(src);
     JsonParser parser;
     auto builder = make_batch_builder(bench_schema());
     BatchSink sink(builder, TypeConflictPolicy::WIDEN);

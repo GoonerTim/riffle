@@ -1,0 +1,22 @@
+[
+  {
+    "threads": 1,
+    "seconds": 1.007,
+    "throughput_mb_s": 118.6
+  },
+  {
+    "threads": 2,
+    "seconds": 0.591,
+    "throughput_mb_s": 202.4
+  },
+  {
+    "threads": 4,
+    "seconds": 0.374,
+    "throughput_mb_s": 319.5
+  },
+  {
+    "threads": 8,
+    "seconds": 0.312,
+    "throughput_mb_s": 382.5
+  }
+]

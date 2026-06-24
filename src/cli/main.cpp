@@ -30,6 +30,7 @@ void print_help() {
               << "      --schema <file>        JSON schema overriding inference\n"
               << "      --batch-rows <n>       Rows per batch (default 65536)\n"
               << "      --batch-bytes <n>      Byte cap per batch (default 256 MiB)\n"
+              << "      --threads <n>          Parallel worker threads (default 1)\n"
               << "      --on-error <mode>      skip | abort | collect (default skip)\n"
               << "      --type-conflict <pol>  widen | string | error (default widen)\n"
               << "      --select <cols>        Keep only these columns (comma-separated)\n"

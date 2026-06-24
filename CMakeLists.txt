@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.25)
-project(riffle VERSION 0.1.3 LANGUAGES CXX)
+project(riffle VERSION 0.2.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -14,6 +14,14 @@ endif()
 # ---------------------------------------------------------------------------
 find_package(Arrow CONFIG REQUIRED)
 find_package(Parquet CONFIG REQUIRED)
+
+# Treat Arrow/Parquet headers as system headers so clang-tidy does not flag
+# their internal deprecations (e.g. std::aligned_storage under C++23).
+foreach(arrow_target Arrow::arrow_shared Parquet::parquet_shared)
+  if(TARGET ${arrow_target})
+    set_target_properties(${arrow_target} PROPERTIES SYSTEM TRUE)
+  endif()
+endforeach()
 
 # simdjson is pinned via FetchContent so the exact header is used everywhere
 # (build and clang-tidy), independent of the distro's packaged version.

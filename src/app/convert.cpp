@@ -1,10 +1,18 @@
 #include "riffle/convert.hpp"
 
+#include <atomic>
 #include <chrono>
+#include <condition_variable>
+#include <map>
 #include <memory>
+#include <mutex>
 #include <optional>
+#include <queue>
+#include <semaphore>
 #include <string>
 #include <string_view>
+#include <thread>
+#include <utility>
 #include <vector>
 
 #include "riffle/batch.hpp"
@@ -148,6 +156,215 @@ std::uint64_t elapsed_ms(Clock::time_point start) {
     return static_cast<std::uint64_t>(duration_cast<milliseconds>(Clock::now() - start).count());
 }
 
+ConvertStats run_single(const Config& cfg, const InferredSchema& schema,
+                        const std::vector<std::string>& sample, ChainedLines& lines) {
+    auto builder = make_batch_builder(schema);
+    JsonParser parser;
+    BatchSink sink(builder, cfg.type_conflict);
+    Ctx ctx{cfg, parser, sink, builder, nullptr, make_ConvertStats(), 0};
+    auto result = pump(ctx, sample, lines);
+    if (result) result = finalize(ctx);
+    set_final_state(ctx.stats, result);
+    return ctx.stats;
+}
+
+struct Chunk {
+    std::size_t seq = 0;
+    std::size_t first_line = 0;
+    std::vector<std::string> lines;
+};
+
+struct ChunkResult {
+    std::optional<RecordBatch> batch;
+    std::vector<ParseError> errors;
+    std::size_t rows_read = 0;
+    std::size_t rows_skipped = 0;
+    bool fatal = false;
+};
+
+ChunkResult process_chunk(const Config& cfg, const InferredSchema& schema, const Chunk& chunk) {
+    JsonParser parser;
+    auto builder = make_batch_builder(schema);
+    BatchSink sink(builder, cfg.type_conflict, /*allow_widen=*/false);
+    ChunkResult res;
+    std::size_t line_no = chunk.first_line;
+    for (const auto& line : chunk.lines) {
+        ++line_no;
+        auto ok = parser.parse(line, sink);
+        if (ok) {
+            ++res.rows_read;
+            continue;
+        }
+        if (sink.fatal() || cfg.on_error == OnError::ABORT) {
+            res.fatal = true;
+            break;
+        }
+        ++res.rows_skipped;
+        if (cfg.on_error == OnError::COLLECT) {
+            res.errors.push_back(
+                make_ParseError({.line_no = line_no, .reason = ok.error(), .raw = line}));
+        }
+    }
+    if (auto built = build_batch(builder)) res.batch = std::move(*built);
+    return res;
+}
+
+// Parse+build chunks on worker threads; a single writer drains results in
+// sequence order so the output is deterministic and memory stays bounded.
+class ParallelExecutor {
+public:
+    ParallelExecutor(const Config& cfg, const InferredSchema& schema)
+        : cfg_(cfg), schema_(schema), slots_(static_cast<std::ptrdiff_t>(2 * cfg.threads + 2)) {}
+
+    ConvertStats run(const std::vector<std::string>& sample, ChainedLines& lines) {
+        std::vector<std::thread> workers;
+        workers.reserve(cfg_.threads);
+        for (std::size_t i = 0; i < cfg_.threads; ++i)
+            workers.emplace_back([this] { worker_loop(); });
+        std::thread producer([&] { produce(sample, lines); });
+        write_loop();
+        producer.join();
+        for (auto& worker : workers) worker.join();
+        return stats_;
+    }
+
+private:
+    void emit(Chunk&& chunk) {
+        slots_.acquire();
+        {
+            std::lock_guard lock(in_mtx_);
+            in_queue_.push(std::move(chunk));
+        }
+        in_cv_.notify_one();
+    }
+
+    void produce(const std::vector<std::string>& sample, ChainedLines& lines) {
+        std::size_t seq = 0;
+        std::size_t line_no = 0;
+        Chunk cur{seq, line_no, {}};
+        auto add = [&](std::string&& line) {
+            cur.lines.push_back(std::move(line));
+            ++line_no;
+            if (cur.lines.size() >= cfg_.batch_rows) {
+                emit(std::move(cur));
+                cur = Chunk{++seq, line_no, {}};
+            }
+        };
+        for (const auto& line : sample) {
+            if (aborted_.load()) break;
+            add(std::string(line));
+        }
+        for (auto line = lines.next(); line && !aborted_.load(); line = lines.next())
+            add(std::string(*line));
+        if (!cur.lines.empty()) {
+            emit(std::move(cur));
+            ++seq;
+        }
+        total_.store(seq);
+        input_done_.store(true);
+        in_cv_.notify_all();
+        out_cv_.notify_all();
+    }
+
+    bool pop_chunk(Chunk& out) {
+        std::unique_lock lock(in_mtx_);
+        in_cv_.wait(lock, [this] { return !in_queue_.empty() || input_done_.load(); });
+        if (in_queue_.empty()) return false;
+        out = std::move(in_queue_.front());
+        in_queue_.pop();
+        return true;
+    }
+
+    void worker_loop() {
+        Chunk chunk;
+        while (pop_chunk(chunk)) {
+            ChunkResult res = aborted_.load() ? ChunkResult{} : process_chunk(cfg_, schema_, chunk);
+            {
+                std::lock_guard lock(out_mtx_);
+                results_.emplace(chunk.seq, std::move(res));
+            }
+            out_cv_.notify_one();
+        }
+    }
+
+    std::expected<void, std::string> ensure_writer() {
+        if (writer_) return {};
+        auto writer = open_writer(cfg_, schema_);
+        if (!writer) return std::unexpected(writer.error());
+        writer_ = std::move(*writer);
+        return {};
+    }
+
+    void consume(ChunkResult& res, std::expected<void, std::string>& result) {
+        if (aborted_.load() || !result) return;
+        if (res.fatal) {
+            result = std::unexpected("aborted");
+            aborted_.store(true);
+            return;
+        }
+        stats_.rows_read += res.rows_read;
+        stats_.rows_skipped += res.rows_skipped;
+        for (auto& error : res.errors) stats_.errors.push_back(std::move(error));
+        if (!res.batch || res.batch->n_rows == 0) return;
+        if (auto ok = ensure_writer(); !ok) {
+            result = ok;
+            aborted_.store(true);
+            return;
+        }
+        stats_.rows_written += res.batch->n_rows;
+        if (auto ok = writer_->write(*res.batch); !ok) {
+            result = ok;
+            aborted_.store(true);
+        }
+    }
+
+    bool drained(std::size_t expected) const {
+        return input_done_.load() && expected >= total_.load() && !results_.contains(expected);
+    }
+
+    void write_loop() {
+        std::expected<void, std::string> result;
+        for (std::size_t expected = 0;; ++expected) {
+            std::unique_lock lock(out_mtx_);
+            out_cv_.wait(lock, [&] { return results_.contains(expected) || drained(expected); });
+            if (!results_.contains(expected)) break;
+            ChunkResult res = std::move(results_[expected]);
+            results_.erase(expected);
+            lock.unlock();
+            consume(res, result);
+            slots_.release();
+        }
+        if (result) {
+            if (auto ok = ensure_writer(); ok)
+                result = writer_->finish();
+            else
+                result = ok;
+        }
+        set_final_state(stats_, result);
+    }
+
+    const Config& cfg_;
+    const InferredSchema& schema_;
+    std::counting_semaphore<> slots_;
+    std::mutex in_mtx_;
+    std::condition_variable in_cv_;
+    std::queue<Chunk> in_queue_;
+    std::atomic<bool> input_done_{false};
+    std::atomic<std::size_t> total_{0};
+    std::mutex out_mtx_;
+    std::condition_variable out_cv_;
+    std::map<std::size_t, ChunkResult> results_;
+    std::atomic<bool> aborted_{false};
+    std::unique_ptr<Writer> writer_;
+    ConvertStats stats_ = make_ConvertStats();
+};
+
+ConvertStats run_parallel(const Config& cfg, const InferredSchema& schema,
+                          const std::vector<std::string>& sample, ChainedLines& lines) {
+    ParallelExecutor executor(cfg, schema);
+    return executor.run(sample, lines);
+}
+
 }
 
 ConvertStats convert(const Config& cfg) {
@@ -161,15 +378,10 @@ ConvertStats convert(const Config& cfg) {
         stats.elapsed_ms = elapsed_ms(start);
         return stats;
     }
-    auto builder = make_batch_builder(*schema);
-    JsonParser parser;
-    BatchSink sink(builder, cfg.type_conflict);
-    Ctx ctx{cfg, parser, sink, builder, nullptr, make_ConvertStats(), 0};
-    auto result = pump(ctx, sample, lines);
-    if (result) result = finalize(ctx);
-    set_final_state(ctx.stats, result);
-    ctx.stats.elapsed_ms = elapsed_ms(start);
-    return ctx.stats;
+    auto stats = cfg.threads <= 1 ? run_single(cfg, *schema, sample, lines)
+                                  : run_parallel(cfg, *schema, sample, lines);
+    stats.elapsed_ms = elapsed_ms(start);
+    return stats;
 }
 
 std::expected<InferredSchema, std::string> infer_schema(const Config& cfg) {

@@ -55,7 +55,7 @@ struct StringHash {
 
 class BatchSink : public RowSink {
 public:
-    BatchSink(BatchBuilder& builder, TypeConflictPolicy policy);
+    BatchSink(BatchBuilder& builder, TypeConflictPolicy policy, bool allow_widen = true);
     void begin_row() override {}
     std::expected<void, std::string> field(std::string_view path, CellValue value) override;
     std::expected<void, std::string> end_row() override;
@@ -65,6 +65,7 @@ public:
 private:
     BatchBuilder& builder_;
     TypeConflictPolicy policy_;
+    bool allow_widen_;
     std::unordered_map<std::string, std::size_t, StringHash, std::equal_to<>> index_;
     std::vector<std::uint8_t> seen_;
     bool fatal_ = false;
