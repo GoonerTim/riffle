@@ -61,9 +61,10 @@ add_library(riffle_core
   src/app/stats.cpp
   src/cli/args.cpp
 )
+find_package(Threads REQUIRED)
 target_include_directories(riffle_core PUBLIC include)
 target_link_libraries(riffle_core
-  PUBLIC  Arrow::arrow_shared Parquet::parquet_shared
+  PUBLIC  Arrow::arrow_shared Parquet::parquet_shared Threads::Threads
   PRIVATE simdjson::simdjson
 )
 
