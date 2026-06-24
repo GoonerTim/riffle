@@ -33,6 +33,7 @@ void print_help() {
               << "      --threads <n>          Parallel worker threads (default 1)\n"
               << "      --on-error <mode>      skip | abort | collect (default skip)\n"
               << "      --type-conflict <pol>  widen | string | error (default widen)\n"
+              << "      --nested <mode>        flatten | native (default flatten)\n"
               << "      --select <cols>        Keep only these columns (comma-separated)\n"
               << "      --exclude <cols>       Drop these columns (comma-separated)\n"
               << "      --rename <from=to,...> Rename output columns\n"

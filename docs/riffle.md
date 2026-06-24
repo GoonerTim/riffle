@@ -140,7 +140,7 @@ python -c "import pyarrow.parquet as pq; print(pq.read_table('sample.parquet').t
 | Ограниченная вложенность     | Вложенные объекты разворачиваются в плоские колонки по пути (`a.b.c`) до `MAX_FLATTEN_DEPTH`; глубже — сериализуются как `string` |
 | Не GUI                       | Только библиотека и CLI                                                                     |
 | Многопоточность (опц.)       | По умолчанию один поток; `--threads N` распараллеливает парсинг/сборку с детерминированным выводом и ограниченной памятью |
-| Только плоские колонки       | Вложенные объекты разворачиваются в dotted-колонки; нативные Parquet-struct/list пока не поддержаны |
+| Вложенность (опц.)           | По умолчанию объекты разворачиваются в dotted-колонки; `--nested native` мапит объекты/массивы в нативные Parquet-struct/list |
 | Без сетевого ввода/вывода    | Источники — локальные файлы и `stdin`; выход — локальный файл                               |
 | Межбатчевое расширение типов | Авто-widen работает до первого сброса row-group; потоковый Parquet фиксирует схему после коммита |
 
@@ -280,6 +280,7 @@ struct Config {
     std::size_t              threads         = 1;     // >1 → parallel pipeline
     OnError                  on_error        = OnError::SKIP;
     TypeConflictPolicy       type_conflict   = TypeConflictPolicy::WIDEN;
+    NestedMode               nested          = NestedMode::FLATTEN;  // native → struct/list
     bool                     emit_stats      = false;
     bool                     print_schema    = false;
 };
@@ -412,6 +413,18 @@ std::unique_ptr<ByteSource> open_input(const std::string& path);
 **детерминированный, byte-identical вывод** независимо от числа потоков и постоянную память
 (число «в полёте» чанков ограничено семафором). Битые строки и политика `OnError` обрабатываются
 по-чанково и сводятся в порядке seq. Замер: ~120 → ~380 МБ/с при 1 → 8 потоках (см. README).
+
+### Нативная вложенность: --nested native
+
+`include/riffle/nested.hpp`, `src/adapters/nested.cpp`. При `nested == NATIVE` (только формат
+`parquet`) вместо разворачивания объектов в dotted-колонки строится **дерево типов** `NestedType`
+(объект → struct, массив → list, скаляры → примитивы) и из него — нативная `arrow::Schema`.
+`infer_nested_schema` парсит сэмпл через **simdjson DOM** и **унифицирует** типы по всем строкам
+(int+double→double; несовпадение форм/скаляров → `string` с сериализацией значения). `NestedBuilder`
+рекурсивно наполняет `arrow::RecordBatchBuilder` (Struct/List/scalar builders) по каждой строке и
+сбрасывает `RecordBatch` каждые `batch_rows`. Битые/не-объектные строки идут по `OnError`.
+Многопоточность с native не комбинируется (путь однопоточный); `--nested native` с `columnar-raw`
+отвергается фабрикой `make_Config`.
 
 ### Парсинг: JsonParser
 
@@ -572,6 +585,7 @@ int main() {
 | `--batch-rows`      | целое                          | `65536`      | `batch_rows`                        |
 | `--batch-bytes`     | целое                          | 256 МиБ      | `batch_bytes` (байтовый порог сброса батча) |
 | `--threads`         | целое                          | `1`          | `threads` (число рабочих потоков)   |
+| `--nested`          | `flatten` \| `native`          | `flatten`    | `nested` (развернуть или Parquet struct/list) |
 | `--on-error`        | `skip` \| `abort` \| `collect` | `skip`       | `on_error`                          |
 | `--type-conflict`   | `widen` \| `string` \| `error` | `widen`      | `type_conflict`                     |
 | `--select`          | `col,col,...`                  | все          | `projection.select`                 |

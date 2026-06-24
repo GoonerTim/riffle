@@ -58,6 +58,11 @@ constexpr std::array<Row<OutputFormat>, 2> kFormats{{
     {OutputFormat::COLUMNAR_RAW, "columnar-raw"},
 }};
 
+constexpr std::array<Row<NestedMode>, 2> kNestedModes{{
+    {NestedMode::FLATTEN, "flatten"},
+    {NestedMode::NATIVE, "native"},
+}};
+
 constexpr std::array<Row<PipelineState>, 7> kStates{{
     {PipelineState::INIT, "init"},
     {PipelineState::INFER_SCHEMA, "infer_schema"},
@@ -85,6 +90,9 @@ std::string_view to_string(CompressionCodec v) {
 std::string_view to_string(OutputFormat value) {
     return name_of<OutputFormat>(kFormats, value);
 }
+std::string_view to_string(NestedMode value) {
+    return name_of<NestedMode>(kNestedModes, value);
+}
 std::string_view to_string(PipelineState value) {
     return name_of<PipelineState>(kStates, value);
 }
@@ -103,6 +111,9 @@ std::expected<CompressionCodec, std::string> parse_compression_codec(std::string
 }
 std::expected<OutputFormat, std::string> parse_output_format(std::string_view text) {
     return value_of<OutputFormat>(kFormats, text);
+}
+std::expected<NestedMode, std::string> parse_nested_mode(std::string_view text) {
+    return value_of<NestedMode>(kNestedModes, text);
 }
 
 ColumnType column_type_of(const CellValue& value) {

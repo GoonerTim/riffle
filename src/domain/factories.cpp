@@ -37,6 +37,8 @@ Config make_Config(Config draft) {
             "Config.output_path must not be empty");
     require(draft.batch_rows >= 1, "Config.batch_rows must be >= 1");
     require(draft.threads >= 1, "Config.threads must be >= 1");
+    require(draft.nested == NestedMode::FLATTEN || draft.output_format == OutputFormat::PARQUET,
+            "--nested native requires parquet output");
     return draft;
 }
 

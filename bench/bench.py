@@ -28,10 +28,13 @@ DATASETS = [
 ]
 REPEATS = 3
 OUT = ROOT / "tmp_bench_out.parquet"
+# Show Riffle both single-threaded and multi-threaded (DuckDB/PyArrow use all cores).
+THREADS = 8
 
 
-def riffle_cmd(src: str) -> list[str]:
-    return [str(RIFFLE), src, "-o", str(OUT)]
+def riffle_cmd(src: str, threads: int) -> list[str]:
+    cmd = [str(RIFFLE), src, "-o", str(OUT)]
+    return cmd + ["--threads", str(threads)] if threads > 1 else cmd
 
 
 def py_cmd(code: str, src: str) -> list[str]:
@@ -39,7 +42,8 @@ def py_cmd(code: str, src: str) -> list[str]:
 
 
 TOOLS = {
-    "riffle": lambda src: riffle_cmd(src),
+    "riffle (1t)": lambda src: riffle_cmd(src, 1),
+    f"riffle ({THREADS}t)": lambda src: riffle_cmd(src, THREADS),
     "duckdb": lambda src: py_cmd(
         "import duckdb; duckdb.sql(\"COPY (SELECT * FROM "
         "read_json_auto(SRC, format='newline_delimited')) TO OUT (FORMAT parquet)\")",

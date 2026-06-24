@@ -69,11 +69,12 @@ That flat line is why Riffle converts files **larger than RAM** on a laptop wher
 
 ![Throughput comparison](docs/img/bench_throughput.png)
 
-Riffle is **not** the throughput leader. DuckDB (~355–595 MB/s) and PyArrow (~260–395 MB/s) are
-faster; Riffle sustains **~115 MB/s**, ahead of pandas (~35 MB/s). Parsing uses the simdjson
-**on-demand** API with `string_view`-backed cells (no per-field allocation), fields are written
-**straight into column builders**, and Arrow appends are **batched** per column. The remaining
-cost is Arrow array construction and string materialization; compression codec barely moves it.
+The chart shows Riffle both single-threaded (`1t`) and multi-threaded (`8t`); DuckDB and PyArrow
+also use all cores. Single-threaded Riffle (~95–100 MB/s) is mid-pack — ahead of pandas, behind
+the multi-core tools — but with `--threads 8` it reaches **~360–380 MB/s**, matching or beating
+DuckDB and PyArrow on this hardware while still using a fraction of their memory. Parsing uses the
+simdjson **on-demand** API with `string_view`-backed cells (no per-field allocation), fields go
+**straight into column builders**, and Arrow appends are **batched** per column.
 
 ### Scaling with `--threads`
 
@@ -90,7 +91,8 @@ while keeping the same flat, bounded memory and **byte-identical, deterministic 
 | ---------------------------------- | --------------------- | ------ | ------- | ------ |
 | Peak memory, flat with input size  | ✅ ~80 MB, constant    | ⚠️ grows | ❌ grows | ❌ huge |
 | Converts files larger than RAM     | ✅                     | ⚠️      | ❌       | ❌      |
-| Raw throughput                     | ⚠️ ~115 MB/s           | ✅      | ✅       | ❌      |
+| Raw throughput (1 thread)          | ⚠️ ~95 MB/s            | ✅      | ✅       | ❌      |
+| Raw throughput (`--threads 8`)     | ✅ ~370 MB/s           | ✅      | ✅       | ❌      |
 | Single static binary, no runtime   | ✅                     | ❌ (lib) | ❌ (lib) | ❌ (lib) |
 
 **Bottom line:** if you need raw speed on data that fits in memory, DuckDB is excellent. If you
@@ -101,11 +103,12 @@ binary, that is exactly what Riffle is for.
 
 🚧 **Working MVP.** JSON-lines → Parquet (and `columnar-raw`) conversion works end-to-end
 (library + CLI), built test-first with 100+ tests. C++23. Schema is inferred (including ISO-8601
-timestamps); nested objects are flattened; column types auto-widen beyond the inference sample;
-`--schema` JSON override, column projection (`--select`/`--exclude`/`--rename`), transparent
-gzip/zstd input, and multi-threaded conversion (`--threads`, deterministic output) are supported.
-Known limitations: with `--threads > 1` the schema is fixed from the inference sample (no
-cross-batch widening); nested data is flattened to dotted columns, not native Parquet structs.
+timestamps); column types auto-widen beyond the inference sample. Supported: `--schema` JSON
+override, column projection (`--select`/`--exclude`/`--rename`), transparent gzip/zstd input,
+multi-threaded conversion (`--threads`, deterministic output), and nested JSON either flattened
+to dotted columns (default) or mapped to **native Parquet struct/list** (`--nested native`).
+Known limitation: with `--threads > 1` the schema is fixed from the inference sample (no
+cross-batch widening).
 
 ## Quick start
 
@@ -143,6 +146,9 @@ riffle huge.jsonl.gz -o out.parquet
 # Parallel conversion across cores (deterministic output, bounded memory)
 riffle huge.jsonl -o out.parquet --threads 8
 
+# Map nested JSON to native Parquet struct/list instead of flattening
+riffle events.jsonl -o out.parquet --nested native
+
 # Multiple files via glob + explicit schema override
 riffle 'logs/*.jsonl' -o merged.parquet --schema schema.json
 
@@ -177,6 +183,7 @@ int main() {
 | `--threads`         | integer                        | `1`       | Parallel worker threads                 |
 | `--on-error`        | `skip` \| `abort` \| `collect` | `skip`    | Policy for malformed lines              |
 | `--type-conflict`   | `widen` \| `string` \| `error` | `widen`   | Column type-conflict resolution         |
+| `--nested`          | `flatten` \| `native`          | `flatten` | Flatten nested JSON or map to Parquet struct/list |
 | `--select`          | `col,col,...`                  | all       | Keep only these columns (in this order) |
 | `--exclude`         | `col,col,...`                  | none      | Drop these columns                      |
 | `--rename`          | `from=to,...`                  | none      | Rename output columns                   |

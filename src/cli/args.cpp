@@ -15,8 +15,8 @@ bool is_value_option(std::string_view token) {
     return token == "-o" || token == "--output" || token == "--format" ||
            token == "--compression" || token == "--on-error" || token == "--type-conflict" ||
            token == "--batch-rows" || token == "--batch-bytes" || token == "--threads" ||
-           token == "--schema" || token == "--select" || token == "--exclude" ||
-           token == "--rename";
+           token == "--nested" || token == "--schema" || token == "--select" ||
+           token == "--exclude" || token == "--rename";
 }
 
 std::vector<std::string> split_csv(const std::string& value) {
@@ -67,6 +67,7 @@ std::expected<void, std::string> apply_enum(Config& draft, std::string_view key,
     if (key == "--format") return assign(draft.output_format, parse_output_format(value));
     if (key == "--compression") return assign(draft.compression, parse_compression_codec(value));
     if (key == "--on-error") return assign(draft.on_error, parse_on_error(value));
+    if (key == "--nested") return assign(draft.nested, parse_nested_mode(value));
     return assign(draft.type_conflict, parse_type_conflict_policy(value));
 }
 

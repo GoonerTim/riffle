@@ -48,15 +48,19 @@ private:
 
 }
 
-std::expected<std::unique_ptr<Writer>, std::string> open_parquet_writer(
-    const Config& config, const InferredSchema& schema) {
+std::expected<std::unique_ptr<Writer>, std::string> open_parquet_writer_arrow(
+    const Config& config, const std::shared_ptr<arrow::Schema>& schema) {
     auto sink = arrow::io::FileOutputStream::Open(config.output_path);
     if (!sink.ok()) return std::unexpected(sink.status().ToString());
-    auto writer =
-        parquet::arrow::FileWriter::Open(*arrow_schema_of(schema), arrow::default_memory_pool(),
-                                         *sink, make_props(config.compression));
+    auto writer = parquet::arrow::FileWriter::Open(*schema, arrow::default_memory_pool(), *sink,
+                                                   make_props(config.compression));
     if (!writer.ok()) return std::unexpected(writer.status().ToString());
     return std::make_unique<ParquetWriter>(std::move(*writer), *sink);
+}
+
+std::expected<std::unique_ptr<Writer>, std::string> open_parquet_writer(
+    const Config& config, const InferredSchema& schema) {
+    return open_parquet_writer_arrow(config, arrow_schema_of(schema));
 }
 
 }

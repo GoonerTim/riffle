@@ -19,9 +19,11 @@
 #include "riffle/factories.hpp"
 #include "riffle/input.hpp"
 #include "riffle/json_parser.hpp"
+#include "riffle/nested.hpp"
 #include "riffle/reader.hpp"
 #include "riffle/schema.hpp"
 #include "riffle/writer.hpp"
+#include "riffle/writer_backends.hpp"
 
 namespace riffle {
 namespace {
@@ -164,6 +166,69 @@ ConvertStats run_single(const Config& cfg, const InferredSchema& schema,
     Ctx ctx{cfg, parser, sink, builder, nullptr, make_ConvertStats(), 0};
     auto result = pump(ctx, sample, lines);
     if (result) result = finalize(ctx);
+    set_final_state(ctx.stats, result);
+    return ctx.stats;
+}
+
+struct NestedCtx {
+    const Config& cfg;
+    NestedBuilder& builder;
+    Writer& writer;
+    ConvertStats stats;
+    std::size_t line_no = 0;
+};
+
+std::expected<void, std::string> nested_flush(NestedCtx& ctx) {
+    if (ctx.builder.rows() == 0) return {};
+    auto batch = ctx.builder.flush();
+    if (!batch) return std::unexpected(batch.error());
+    ctx.stats.rows_written += batch->n_rows;
+    return ctx.writer.write(*batch);
+}
+
+std::expected<void, std::string> nested_process(NestedCtx& ctx, std::string_view line) {
+    ++ctx.line_no;
+    if (auto ok = ctx.builder.append_line(line); !ok) {
+        if (ctx.cfg.on_error == OnError::ABORT) return std::unexpected(ok.error());
+        ++ctx.stats.rows_skipped;
+        if (ctx.cfg.on_error == OnError::COLLECT)
+            ctx.stats.errors.push_back(make_ParseError(
+                {.line_no = ctx.line_no, .reason = ok.error(), .raw = std::string(line)}));
+        return {};
+    }
+    ++ctx.stats.rows_read;
+    if (ctx.builder.rows() >= ctx.cfg.batch_rows) return nested_flush(ctx);
+    return {};
+}
+
+std::expected<void, std::string> nested_pump(NestedCtx& ctx, const std::vector<std::string>& sample,
+                                             ChainedLines& lines) {
+    for (const auto& line : sample)
+        if (auto ok = nested_process(ctx, line); !ok) return ok;
+    for (auto line = lines.next(); line; line = lines.next())
+        if (auto ok = nested_process(ctx, *line); !ok) return ok;
+    return nested_flush(ctx);
+}
+
+ConvertStats aborted_stats() {
+    auto stats = make_ConvertStats();
+    stats.final_state = PipelineState::ABORTED;
+    return stats;
+}
+
+ConvertStats run_nested(const Config& cfg, const std::vector<std::string>& sample,
+                        ChainedLines& lines) {
+    auto top = infer_nested_schema(sample);
+    if (!top) return aborted_stats();
+    auto builder = NestedBuilder::make(*top);
+    if (!builder) return aborted_stats();
+    auto writer = open_parquet_writer_arrow(cfg, nested_arrow_schema(*top));
+    if (!writer) return aborted_stats();
+    auto built = std::move(*builder);
+    auto sink = std::move(*writer);
+    NestedCtx ctx{cfg, *built, *sink, make_ConvertStats(), 0};
+    auto result = nested_pump(ctx, sample, lines);
+    if (result) result = sink->finish();
     set_final_state(ctx.stats, result);
     return ctx.stats;
 }
@@ -371,10 +436,14 @@ ConvertStats convert(const Config& cfg) {
     const auto start = Clock::now();
     ChainedLines lines(cfg.inputs);
     auto sample = read_sample(lines, INFER_SAMPLE_ROWS);
+    if (cfg.nested == NestedMode::NATIVE) {
+        auto stats = run_nested(cfg, sample, lines);
+        stats.elapsed_ms = elapsed_ms(start);
+        return stats;
+    }
     auto schema = resolve_schema(cfg, sample);
     if (!schema) {
-        auto stats = make_ConvertStats();
-        stats.final_state = PipelineState::ABORTED;
+        auto stats = aborted_stats();
         stats.elapsed_ms = elapsed_ms(start);
         return stats;
     }

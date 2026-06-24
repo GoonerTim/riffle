@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.25)
-project(riffle VERSION 0.2.0 LANGUAGES CXX)
+project(riffle VERSION 0.2.1 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -56,6 +56,7 @@ add_library(riffle_core
   src/adapters/reader.cpp
   src/adapters/input.cpp
   src/adapters/json_parser.cpp
+  src/adapters/nested.cpp
   src/adapters/schema_json.cpp
   src/app/convert.cpp
   src/app/stats.cpp
@@ -104,6 +105,7 @@ add_executable(riffle_tests
   tests/adapters/columnar_raw_writer_test.cpp
   tests/adapters/reader_test.cpp
   tests/adapters/json_parser_test.cpp
+  tests/adapters/nested_test.cpp
   tests/app/convert_test.cpp
   tests/cli/args_test.cpp
 )

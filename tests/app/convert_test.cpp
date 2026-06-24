@@ -115,6 +115,30 @@ TEST(Convert, MultiThreadedSkipsMalformedLines) {
     EXPECT_EQ(stats.rows_skipped, 1u);
 }
 
+TEST(Convert, NativeNestedProducesStructAndListColumns) {
+    std::string body = R"({"id":1,"geo":{"lat":1.5,"city":"A"},"tags":[1,2,3]})"
+                       "\n"
+                       R"({"id":2,"geo":{"lat":2.5,"city":"B"},"tags":[4]})"
+                       "\n";
+    auto in = write_file("c_nested.jsonl", body);
+    auto out = ::testing::TempDir() + "c_nested.parquet";
+    auto cfg = config_for(in, out);
+    cfg.nested = NestedMode::NATIVE;
+    auto stats = convert(cfg);
+    EXPECT_EQ(stats.final_state, PipelineState::DONE);
+    EXPECT_EQ(stats.rows_written, 2u);
+
+    auto table = read_parquet(out);
+    ASSERT_NE(table, nullptr);
+    EXPECT_EQ(table->num_rows(), 2);
+    auto geo = table->schema()->GetFieldByName("geo");
+    auto tags = table->schema()->GetFieldByName("tags");
+    ASSERT_NE(geo, nullptr);
+    ASSERT_NE(tags, nullptr);
+    EXPECT_EQ(geo->type()->id(), arrow::Type::STRUCT);
+    EXPECT_EQ(tags->type()->id(), arrow::Type::LIST);
+}
+
 TEST(Convert, ReadsGzipInputTransparently) {
     auto in = write_gzip("c_gz.jsonl.gz", "{\"code\":200}\n{\"code\":404}\n{\"code\":500}\n");
     auto out = ::testing::TempDir() + "c_gz.parquet";
