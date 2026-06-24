@@ -17,6 +17,7 @@ InferredSchema abc() {
 
 std::vector<std::string> names(const InferredSchema& s) {
     std::vector<std::string> out;
+    out.reserve(s.columns.size());
     for (const auto& col : s.columns) out.push_back(col.name);
     return out;
 }
