@@ -24,11 +24,18 @@ std::shared_ptr<arrow::Table> read_parquet(const std::string& path) {
     return table;
 }
 
+void put_int(BatchSink& sink, std::int64_t v) {
+    sink.begin_row();
+    (void)sink.field("v", CellValue{v});
+    (void)sink.end_row();
+}
+
 RecordBatch one_int_column() {
     InferredSchema schema{.columns = {{"v", ColumnType::INT64, true, "v"}}};
     auto builder = make_batch_builder(schema);
-    (void)append_row(builder, Row{{{"v", CellValue{std::int64_t{10}}}}});
-    (void)append_row(builder, Row{{{"v", CellValue{std::int64_t{20}}}}});
+    BatchSink sink(builder, TypeConflictPolicy::WIDEN);
+    put_int(sink, 10);
+    put_int(sink, 20);
     return build_batch(builder).value();
 }
 

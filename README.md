@@ -45,11 +45,11 @@ That flat line is why Riffle converts files **larger than RAM** on a laptop wher
 
 ![Throughput comparison](docs/img/bench_throughput.png)
 
-Riffle is **not** the throughput leader. DuckDB (~360–595 MB/s) and PyArrow (~280–390 MB/s) are
-faster; Riffle sustains **~80 MB/s**, ahead of pandas (~40 MB/s). Parsing already uses the
-simdjson **on-demand** API and Arrow appends are **batched** per column; the remaining cost is
-per-row materialization (string allocations for flattened paths/values and per-line buffer
-copies), not JSON parsing or Arrow append. Compression codec barely moves it.
+Riffle is **not** the throughput leader. DuckDB (~350–595 MB/s) and PyArrow (~280–405 MB/s) are
+faster; Riffle sustains **~100 MB/s**, ahead of pandas (~40 MB/s). Parsing uses the simdjson
+**on-demand** API, fields are written **straight into column builders** (no intermediate row
+object, no per-field path allocation), and Arrow appends are **batched** per column. The
+remaining cost is Arrow array construction and per-line reading; compression codec barely moves it.
 
 ### Where Riffle wins / where it doesn't
 

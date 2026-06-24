@@ -38,6 +38,12 @@ lint: configure
 run *ARGS: build
     {{build_dir}}/riffle {{ARGS}}
 
+# Stage-ablation profiler: where does conversion time go (read/parse/append)?
+profile FILE:
+    cmake -S . -B build-release -DCMAKE_BUILD_TYPE=Release -DRIFFLE_BUILD_PROFILER=ON
+    cmake --build build-release -j {{jobs}}
+    build-release/riffle_profile {{FILE}}
+
 # Reproduce the benchmark: generate data, run all tools, render charts.
 # Requires a release build in build-release/ and: pip install duckdb pyarrow pandas psutil matplotlib
 bench:

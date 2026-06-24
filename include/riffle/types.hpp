@@ -15,17 +15,6 @@ namespace riffle {
 // A single JSON scalar value; monostate represents null/absent.
 using CellValue = std::variant<std::monostate, std::int64_t, double, bool, std::string>;
 
-// One field of a parsed row: flattened path + its value.
-struct Field {
-    std::string path;
-    CellValue value;
-};
-
-// A parsed input line as an ordered list of fields.
-struct Row {
-    std::vector<Field> fields;
-};
-
 // Logical type a JSON value maps to in the output schema.
 enum class ColumnType { INT64, DOUBLE, BOOL, STRING, TIMESTAMP, NULLTYPE };
 

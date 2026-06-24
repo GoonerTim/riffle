@@ -30,13 +30,6 @@ std::shared_ptr<arrow::DataType> arrow_type(ColumnType type) {
     }
 }
 
-CellValue find_value(const Row& row, const std::string& path) {
-    for (const auto& field : row.fields) {
-        if (field.path == path) return field.value;
-    }
-    return CellValue{};
-}
-
 std::string to_text(const CellValue& value) {
     if (auto* v = std::get_if<std::int64_t>(&value)) return std::to_string(*v);
     if (auto* v = std::get_if<double>(&value)) return std::to_string(*v);
@@ -233,14 +226,35 @@ std::expected<void, std::string> ensure_fits(ColumnBuilder& column, const CellVa
 
 }  // namespace
 
-std::expected<void, std::string> append_row(BatchBuilder& builder, const Row& row,
-                                            TypeConflictPolicy policy) {
-    for (auto& column : builder.columns) {
-        auto value = find_value(row, column.schema.json_path);
-        if (auto ok = ensure_fits(column, value, policy); !ok) return ok;
-        if (auto ok = append_cell(column, value); !ok) return ok;
+BatchSink::BatchSink(BatchBuilder& builder, TypeConflictPolicy policy)
+    : builder_(builder), policy_(policy), seen_(builder.columns.size(), 0) {
+    for (std::size_t i = 0; i < builder_.columns.size(); ++i) {
+        index_.emplace(builder_.columns[i].schema.json_path, i);
     }
-    ++builder.n_rows;
+}
+
+std::expected<void, std::string> BatchSink::field(std::string_view path, CellValue value) {
+    auto it = index_.find(path);
+    if (it == index_.end() || seen_[it->second]) return {};  // unknown or duplicate key
+    auto& column = builder_.columns[it->second];
+    if (auto ok = ensure_fits(column, value, policy_); !ok) {
+        fatal_ = true;
+        return ok;
+    }
+    if (auto ok = append_cell(column, value); !ok) {
+        fatal_ = true;
+        return ok;
+    }
+    seen_[it->second] = 1;
+    return {};
+}
+
+std::expected<void, std::string> BatchSink::end_row() {
+    for (std::size_t i = 0; i < builder_.columns.size(); ++i) {
+        if (!seen_[i]) push_null(builder_.columns[i]);
+        seen_[i] = 0;
+    }
+    ++builder_.n_rows;
     return {};
 }
 

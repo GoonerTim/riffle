@@ -10,10 +10,9 @@
 
 #include "riffle/batch.hpp"
 #include "riffle/factories.hpp"
-#include "riffle/ports.hpp"
+#include "riffle/json_parser.hpp"
 #include "riffle/reader.hpp"
 #include "riffle/schema.hpp"
-#include "riffle/simdjson_source.hpp"
 #include "riffle/writer.hpp"
 
 namespace riffle {
@@ -26,92 +25,72 @@ std::unique_ptr<std::istream> open_stream(const std::string& path) {
     return std::make_unique<std::ifstream>(path);
 }
 
-// RowSource over an in-memory sample (used to drive schema inference).
-class VectorSource : public RowSource {
+// Yields raw non-empty lines across all configured inputs in order.
+class ChainedLines {
 public:
-    explicit VectorSource(const std::vector<Row>& rows) : rows_(rows) {}
-    std::optional<Row> next() override {
-        if (index_ >= rows_.size()) return std::nullopt;
-        return rows_[index_++];
-    }
+    explicit ChainedLines(std::vector<std::string> paths) : paths_(std::move(paths)) { advance(); }
 
-private:
-    const std::vector<Row>& rows_;
-    std::size_t index_ = 0;
-};
-
-// RowSource that reads each configured input in turn, accumulating parse errors.
-class ChainedSource : public RowSource {
-public:
-    explicit ChainedSource(std::vector<std::string> paths) : paths_(std::move(paths)) { advance(); }
-
-    std::optional<Row> next() override {
-        while (source_) {
-            if (auto row = source_->next()) return row;
-            absorb_errors();
+    std::optional<std::string> next() {
+        while (reader_) {
+            if (auto line = reader_->next()) return line;
             advance();
         }
         return std::nullopt;
     }
 
-    const std::vector<ParseError>& errors() const { return errors_; }
-
 private:
-    void absorb_errors() {
-        if (!source_) return;
-        for (const auto& error : source_->errors()) errors_.push_back(error);
-    }
-
     void advance() {
-        source_.reset();
         reader_.reset();
         stream_.reset();
         if (index_ >= paths_.size()) return;
         stream_ = open_stream(paths_[index_++]);
         reader_ = std::make_unique<LineReader>(*stream_);
-        source_ = std::make_unique<SimdjsonSource>(*reader_);
     }
 
     std::vector<std::string> paths_;
     std::size_t index_ = 0;
     std::unique_ptr<std::istream> stream_;
     std::unique_ptr<LineReader> reader_;
-    std::unique_ptr<SimdjsonSource> source_;
-    std::vector<ParseError> errors_;
 };
 
-struct PipelineCtx {
+// Phase 1: read up to INFER_SAMPLE_ROWS lines, keep them, and infer the schema.
+std::vector<std::string> read_sample(ChainedLines& lines, std::size_t limit) {
+    std::vector<std::string> sample;
+    while (sample.size() < limit) {
+        auto line = lines.next();
+        if (!line) break;
+        sample.push_back(std::move(*line));
+    }
+    return sample;
+}
+
+InferredSchema infer(const Config& cfg, const std::vector<std::string>& sample) {
+    JsonParser parser;
+    InferenceSink sink(cfg.type_conflict);
+    for (const auto& line : sample) (void)parser.parse(line, sink);  // bad lines: handled in phase 2
+    auto schema = sink.schema();
+    if (cfg.schema_override.columns.empty()) return schema;
+    return merge_override(schema, cfg.schema_override);
+}
+
+// Phase 2 conversion context: parse each line straight into the batch builder.
+struct Ctx {
     const Config& cfg;
+    JsonParser& parser;
+    BatchSink& sink;
+    BatchBuilder& builder;
     std::unique_ptr<Writer> writer;  // opened lazily on first flush
-    BatchBuilder builder;
     ConvertStats stats;
+    std::size_t line_no = 0;
 };
 
-// Reconstruct the (possibly widened) schema currently held by the builder.
 InferredSchema current_schema(const BatchBuilder& builder) {
     InferredSchema schema;
     for (const auto& column : builder.columns) schema.columns.push_back(column.schema);
     return schema;
 }
 
-std::vector<Row> read_sample(RowSource& source, std::size_t limit) {
-    std::vector<Row> sample;
-    while (sample.size() < limit) {
-        auto row = source.next();  // never over-read past the limit
-        if (!row) break;
-        sample.push_back(std::move(*row));
-    }
-    return sample;
-}
-
-InferredSchema build_schema_for(const Config& cfg, const std::vector<Row>& sample) {
-    VectorSource source(sample);
-    auto schema = infer_schema(source, cfg.type_conflict);
-    if (cfg.schema_override.columns.empty()) return schema;
-    return merge_override(schema, cfg.schema_override);
-}
-
-std::expected<void, std::string> ensure_writer(PipelineCtx& ctx) {
+std::expected<void, std::string> ensure_writer(Ctx& ctx) {
     if (ctx.writer) return {};
     auto writer = open_writer(ctx.cfg, current_schema(ctx.builder));
     if (!writer) return std::unexpected(writer.error());
@@ -119,7 +98,7 @@ std::expected<void, std::string> ensure_writer(PipelineCtx& ctx) {
     return {};
 }
 
-std::expected<void, std::string> flush(PipelineCtx& ctx) {
+std::expected<void, std::string> flush(Ctx& ctx) {
     if (ctx.builder.n_rows == 0) return {};
     if (auto ok = ensure_writer(ctx); !ok) return ok;
     auto batch = build_batch(ctx.builder);
@@ -128,49 +107,42 @@ std::expected<void, std::string> flush(PipelineCtx& ctx) {
     return ctx.writer->write(*batch);
 }
 
-std::expected<void, std::string> append_one(PipelineCtx& ctx, const Row& row) {
-    if (auto ok = append_row(ctx.builder, row, ctx.cfg.type_conflict); !ok) return ok;
+std::expected<void, std::string> on_bad_line(Ctx& ctx, std::string_view line, std::string reason) {
+    if (ctx.sink.fatal() || ctx.cfg.on_error == OnError::ABORT) return std::unexpected(reason);
+    ++ctx.stats.rows_skipped;
+    if (ctx.cfg.on_error == OnError::COLLECT) {
+        ctx.stats.errors.push_back(
+            make_ParseError({.line_no = ctx.line_no, .reason = std::move(reason), .raw = std::string(line)}));
+    }
+    return {};
+}
+
+std::expected<void, std::string> process(Ctx& ctx, const std::string& line) {
+    ++ctx.line_no;
+    if (auto ok = ctx.parser.parse(line, ctx.sink); !ok) return on_bad_line(ctx, line, ok.error());
     ++ctx.stats.rows_read;
     if (ctx.builder.n_rows >= ctx.cfg.batch_rows) return flush(ctx);
     return {};
 }
 
-std::expected<void, std::string> pump(PipelineCtx& ctx, std::vector<Row>& sample, RowSource& src) {
-    for (auto& row : sample) {
-        if (auto ok = append_one(ctx, row); !ok) return ok;
+std::expected<void, std::string> pump(Ctx& ctx, const std::vector<std::string>& sample,
+                                      ChainedLines& lines) {
+    for (const auto& line : sample) {
+        if (auto ok = process(ctx, line); !ok) return ok;
     }
-    for (auto row = src.next(); row; row = src.next()) {
-        if (auto ok = append_one(ctx, *row); !ok) return ok;
+    for (auto line = lines.next(); line; line = lines.next()) {
+        if (auto ok = process(ctx, *line); !ok) return ok;
     }
     return flush(ctx);
 }
 
-void apply_error_policy(ConvertStats& stats, const Config& cfg,
-                        const std::vector<ParseError>& errors) {
-    stats.rows_skipped = errors.size();
-    if (cfg.on_error == OnError::COLLECT) stats.errors = errors;
-    if (cfg.on_error == OnError::ABORT && !errors.empty()) stats.final_state = PipelineState::ABORTED;
-}
-
-void set_final_state(ConvertStats& stats, const std::expected<void, std::string>& result) {
-    if (!result || stats.final_state == PipelineState::ABORTED) {
-        stats.final_state = PipelineState::ABORTED;
-        return;
-    }
-    stats.final_state = PipelineState::DONE;
-}
-
-std::expected<void, std::string> finalize(PipelineCtx& ctx) {
+std::expected<void, std::string> finalize(Ctx& ctx) {
     if (auto ok = ensure_writer(ctx); !ok) return ok;  // empty input → valid empty file
     return ctx.writer->finish();
 }
 
-ConvertStats run_pipeline(PipelineCtx ctx, std::vector<Row>& sample, ChainedSource& source) {
-    auto result = pump(ctx, sample, source);
-    if (result) result = finalize(ctx);
-    apply_error_policy(ctx.stats, ctx.cfg, source.errors());
-    set_final_state(ctx.stats, result);
-    return ctx.stats;
+void set_final_state(ConvertStats& stats, const std::expected<void, std::string>& result) {
+    stats.final_state = result ? PipelineState::DONE : PipelineState::ABORTED;
 }
 
 std::uint64_t elapsed_ms(Clock::time_point start) {
@@ -182,13 +154,18 @@ std::uint64_t elapsed_ms(Clock::time_point start) {
 
 ConvertStats convert(const Config& cfg) {
     const auto start = Clock::now();
-    ChainedSource source(cfg.inputs);
-    auto sample = read_sample(source, INFER_SAMPLE_ROWS);
-    auto schema = build_schema_for(cfg, sample);
-    PipelineCtx ctx{cfg, nullptr, make_batch_builder(schema), make_ConvertStats()};
-    auto stats = run_pipeline(std::move(ctx), sample, source);
-    stats.elapsed_ms = elapsed_ms(start);
-    return stats;
+    ChainedLines lines(cfg.inputs);
+    auto sample = read_sample(lines, INFER_SAMPLE_ROWS);
+    auto schema = infer(cfg, sample);
+    auto builder = make_batch_builder(schema);
+    JsonParser parser;
+    BatchSink sink(builder, cfg.type_conflict);
+    Ctx ctx{cfg, parser, sink, builder, nullptr, make_ConvertStats(), 0};
+    auto result = pump(ctx, sample, lines);
+    if (result) result = finalize(ctx);
+    set_final_state(ctx.stats, result);
+    ctx.stats.elapsed_ms = elapsed_ms(start);
+    return ctx.stats;
 }
 
 }  // namespace riffle

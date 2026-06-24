@@ -1,12 +1,14 @@
 # Build
 /build/
 /build-release/
+/build-prof/
 /cmake-build-*/
 *.o
 *.a
 *.so
 *.dylib
 *.exe
+gmon.out
 
 # CMake
 CMakeCache.txt

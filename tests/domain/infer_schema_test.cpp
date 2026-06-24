@@ -1,40 +1,36 @@
-#include "riffle/ports.hpp"
 #include "riffle/schema.hpp"
 #include "riffle/types.hpp"
 
 #include <gtest/gtest.h>
 
 #include <cstdint>
-#include <optional>
-#include <vector>
+#include <initializer_list>
+#include <string>
+#include <utility>
 
 namespace riffle {
 namespace {
 
-// Minimal in-memory RowSource for driving infer_schema.
-class FakeSource : public RowSource {
-public:
-    explicit FakeSource(std::vector<Row> rows) : rows_(std::move(rows)) {}
-    std::optional<Row> next() override {
-        if (index_ >= rows_.size()) return std::nullopt;
-        return rows_[index_++];
-    }
+using FieldList = std::initializer_list<std::pair<std::string_view, CellValue>>;
 
-private:
-    std::vector<Row> rows_;
-    std::size_t index_ = 0;
-};
+// Feed one row of (path, value) fields into the sink.
+void feed(InferenceSink& sink, FieldList fields) {
+    sink.begin_row();
+    for (const auto& [path, value] : fields) (void)sink.field(path, value);
+    (void)sink.end_row();
+}
 
-Field i64(std::string path, std::int64_t v) { return {std::move(path), CellValue{v}}; }
-Field dbl(std::string path, double v) { return {std::move(path), CellValue{v}}; }
-Field str(std::string path, std::string v) { return {std::move(path), CellValue{std::move(v)}}; }
-Field nul(std::string path) { return {std::move(path), CellValue{}}; }
+CellValue i64(std::int64_t v) { return CellValue{v}; }
+CellValue dbl(double v) { return CellValue{v}; }
+CellValue str(std::string v) { return CellValue{std::move(v)}; }
+CellValue nul() { return CellValue{}; }
 
 }  // namespace
 
 TEST(InferSchema, ColumnsFollowFirstAppearanceOrder) {
-    FakeSource src({Row{{str("ts", "t"), i64("code", 200)}}});
-    auto schema = infer_schema(src, TypeConflictPolicy::WIDEN);
+    InferenceSink sink(TypeConflictPolicy::WIDEN);
+    feed(sink, {{"ts", str("t")}, {"code", i64(200)}});
+    auto schema = sink.schema();
     ASSERT_EQ(schema.columns.size(), 2u);
     EXPECT_EQ(schema.columns[0].name, "ts");
     EXPECT_EQ(schema.columns[1].name, "code");
@@ -42,36 +38,43 @@ TEST(InferSchema, ColumnsFollowFirstAppearanceOrder) {
 }
 
 TEST(InferSchema, WidensTypesAcrossRows) {
-    FakeSource src({Row{{i64("v", 1)}}, Row{{dbl("v", 2.5)}}});
-    auto schema = infer_schema(src, TypeConflictPolicy::WIDEN);
+    InferenceSink sink(TypeConflictPolicy::WIDEN);
+    feed(sink, {{"v", i64(1)}});
+    feed(sink, {{"v", dbl(2.5)}});
+    auto schema = sink.schema();
     ASSERT_EQ(schema.columns.size(), 1u);
     EXPECT_EQ(schema.columns[0].type, ColumnType::DOUBLE);
 }
 
 TEST(InferSchema, OnlyNullColumnIsNullType) {
-    FakeSource src({Row{{nul("x")}}, Row{{nul("x")}}});
-    auto schema = infer_schema(src, TypeConflictPolicy::WIDEN);
+    InferenceSink sink(TypeConflictPolicy::WIDEN);
+    feed(sink, {{"x", nul()}});
+    feed(sink, {{"x", nul()}});
+    auto schema = sink.schema();
     ASSERT_EQ(schema.columns.size(), 1u);
     EXPECT_EQ(schema.columns[0].type, ColumnType::NULLTYPE);
 }
 
 TEST(InferSchema, CountsSampledRows) {
-    FakeSource src({Row{{i64("v", 1)}}, Row{{i64("v", 2)}}, Row{{i64("v", 3)}}});
-    auto schema = infer_schema(src, TypeConflictPolicy::WIDEN);
-    EXPECT_EQ(schema.sampled_rows, 3u);
+    InferenceSink sink(TypeConflictPolicy::WIDEN);
+    feed(sink, {{"v", i64(1)}});
+    feed(sink, {{"v", i64(2)}});
+    feed(sink, {{"v", i64(3)}});
+    EXPECT_EQ(sink.schema().sampled_rows, 3u);
 }
 
 TEST(InferSchema, IsoStringsBecomeTimestamp) {
-    FakeSource src({Row{{str("ts", "2026-06-24T10:00:00Z")}},
-                    Row{{str("ts", "2026-06-24T10:00:01Z")}}});
-    auto schema = infer_schema(src, TypeConflictPolicy::WIDEN);
-    EXPECT_EQ(schema.columns[0].type, ColumnType::TIMESTAMP);
+    InferenceSink sink(TypeConflictPolicy::WIDEN);
+    feed(sink, {{"ts", str("2026-06-24T10:00:00Z")}});
+    feed(sink, {{"ts", str("2026-06-24T10:00:01Z")}});
+    EXPECT_EQ(sink.schema().columns[0].type, ColumnType::TIMESTAMP);
 }
 
 TEST(InferSchema, MixedTimestampAndPlainStringIsString) {
-    FakeSource src({Row{{str("ts", "2026-06-24T10:00:00Z")}}, Row{{str("ts", "oops")}}});
-    auto schema = infer_schema(src, TypeConflictPolicy::WIDEN);
-    EXPECT_EQ(schema.columns[0].type, ColumnType::STRING);
+    InferenceSink sink(TypeConflictPolicy::WIDEN);
+    feed(sink, {{"ts", str("2026-06-24T10:00:00Z")}});
+    feed(sink, {{"ts", str("oops")}});
+    EXPECT_EQ(sink.schema().columns[0].type, ColumnType::STRING);
 }
 
 }  // namespace riffle

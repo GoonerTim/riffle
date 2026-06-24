@@ -31,7 +31,7 @@ add_library(riffle_core
   src/adapters/writer.cpp
   src/adapters/columnar_raw_writer.cpp
   src/adapters/reader.cpp
-  src/adapters/simdjson_source.cpp
+  src/adapters/json_parser.cpp
   src/adapters/schema_json.cpp
   src/app/convert.cpp
   src/app/stats.cpp
@@ -48,6 +48,15 @@ target_link_libraries(riffle_core
 # ---------------------------------------------------------------------------
 add_executable(riffle src/cli/main.cpp)
 target_link_libraries(riffle PRIVATE riffle_core)
+
+# ---------------------------------------------------------------------------
+# Stage-ablation profiler (optional: -DRIFFLE_BUILD_PROFILER=ON)
+# ---------------------------------------------------------------------------
+option(RIFFLE_BUILD_PROFILER "Build the stage-ablation profiler" OFF)
+if(RIFFLE_BUILD_PROFILER)
+  add_executable(riffle_profile bench/profile_stages.cpp)
+  target_link_libraries(riffle_profile PRIVATE riffle_core simdjson::simdjson)
+endif()
 
 # ---------------------------------------------------------------------------
 # Tests
@@ -68,7 +77,7 @@ add_executable(riffle_tests
   tests/adapters/parquet_writer_test.cpp
   tests/adapters/columnar_raw_writer_test.cpp
   tests/adapters/reader_test.cpp
-  tests/adapters/simdjson_source_test.cpp
+  tests/adapters/json_parser_test.cpp
   tests/app/convert_test.cpp
   tests/cli/args_test.cpp
 )
