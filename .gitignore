@@ -1,5 +1,6 @@
 # Build
 /build/
+/build-release/
 /cmake-build-*/
 *.o
 *.a
@@ -20,6 +21,11 @@ compile_commands.json
 *.parquet
 *.jsonl
 !docs/**/*.jsonl
+# small committed fixtures
+!tests/data/*.jsonl
+# large generated benchmark datasets
+/bench/data/
+/tmp_bench_out.parquet
 /tmp/
 /.cache/
 

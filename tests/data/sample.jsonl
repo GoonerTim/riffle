@@ -1,0 +1,3 @@
+{"ts":"2026-06-24T10:00:00Z","level":"info","code":200,"latency_ms":12.5}
+{"ts":"2026-06-24T10:00:01Z","level":"error","code":500,"latency_ms":840.1}
+{"ts":"2026-06-24T10:00:02Z","level":"info","code":204,"latency_ms":3.2}

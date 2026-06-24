@@ -38,6 +38,16 @@ lint: configure
 run *ARGS: build
     {{build_dir}}/riffle {{ARGS}}
 
+# Reproduce the benchmark: generate data, run all tools, render charts.
+# Requires a release build in build-release/ and: pip install duckdb pyarrow pandas psutil matplotlib
+bench:
+    cmake -S . -B build-release -DCMAKE_BUILD_TYPE=Release
+    cmake --build build-release -j {{jobs}}
+    python bench/gen_data.py 1000000 bench/data/bench.jsonl
+    python bench/gen_data.py 3000000 bench/data/bench3m.jsonl
+    python bench/bench.py
+    python bench/plot.py
+
 # Remove build artifacts
 clean:
     rm -rf {{build_dir}}

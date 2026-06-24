@@ -26,12 +26,50 @@ The name is a double metaphor: a *riffle* is both a quick shuffle of a card deck
 
 See the full design in [`docs/riffle.md`](docs/riffle.md).
 
+## Benchmarks
+
+Converting the same JSON-lines dataset to Parquet, Riffle vs. the common Python one-liners
+(`duckdb`, `pyarrow.json`, `pandas`). Measured on the development machine; reproduce with
+`just bench` (each tool run as a subprocess 3×, best wall-time, peak RSS polled via psutil).
+
+### Peak memory — the reason Riffle exists
+
+![Peak memory comparison](docs/img/bench_memory.png)
+
+Riffle streams in **constant memory**: its peak stays at **~75 MB whether the input is 120 MB
+or 359 MB**. The others load the whole file (or large intermediates): pandas peaks at **4.2 GB
+on a 359 MB input (~12×)**, pyarrow at ~810 MB, duckdb at ~490 MB and growing with input size.
+That flat line is why Riffle converts files **larger than RAM** on a laptop where the others OOM.
+
+### Throughput — honest picture
+
+![Throughput comparison](docs/img/bench_throughput.png)
+
+Riffle is **not** the throughput leader. DuckDB (~360–590 MB/s) and PyArrow (~270–380 MB/s) are
+faster; Riffle sustains **~80 MB/s**, ahead of pandas (~40 MB/s). Riffle's throughput is
+parse/build-bound today (simdjson DOM API + per-cell Arrow appends) and has clear headroom;
+compression codec barely moves it.
+
+### Where Riffle wins / where it doesn't
+
+| Criterion                          | Riffle                | duckdb | pyarrow | pandas |
+| ---------------------------------- | --------------------- | ------ | ------- | ------ |
+| Peak memory, flat with input size  | ✅ ~75 MB, constant    | ⚠️ grows | ❌ grows | ❌ huge |
+| Converts files larger than RAM     | ✅                     | ⚠️      | ❌       | ❌      |
+| Raw throughput                     | ⚠️ ~80 MB/s            | ✅      | ✅       | ❌      |
+| Single static binary, no runtime   | ✅                     | ❌ (lib) | ❌ (lib) | ❌ (lib) |
+
+**Bottom line:** if you need raw speed on data that fits in memory, DuckDB is excellent. If you
+need to convert **arbitrarily large logs in bounded memory** from a single dependency-free
+binary, that is exactly what Riffle is for.
+
 ## Status
 
 🚧 **Working MVP.** JSON-lines → Parquet (and `columnar-raw`) conversion works end-to-end
-(library + CLI), built test-first with ~68 tests. C++23. Schema is inferred (including
-ISO-8601 timestamps); nested objects are flattened. Known limitations: `--schema` override
-is library-only for now, and type widening covers int→double only (no cross-sample widening).
+(library + CLI), built test-first with 80+ tests. C++23. Schema is inferred (including ISO-8601
+timestamps); nested objects are flattened; column types auto-widen beyond the inference sample;
+`--schema` JSON override is supported in the CLI. Known limitation: cross-batch widening is
+bounded by the first row-group flush (streaming Parquet fixes the schema once committed).
 
 ## Quick start
 
