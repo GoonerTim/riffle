@@ -27,7 +27,7 @@ InferredSchema schema_ab() {
 
 CellValue i64(std::int64_t v) { return CellValue{v}; }
 
-}  // namespace
+}
 
 TEST(Batch, BuildsColumnsFromRows) {
     auto builder = make_batch_builder(schema_ab());
@@ -113,4 +113,4 @@ TEST(Batch, WidenColumnIntToDouble) {
     EXPECT_DOUBLE_EQ(v->Value(0), 3.0);
 }
 
-}  // namespace riffle
+}

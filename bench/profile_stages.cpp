@@ -1,11 +1,3 @@
-// Stage-ablation profiler: isolates where conversion time goes by measuring
-// nested stages and subtracting.
-//
-//   read           = LineReader only
-//   read+parse     = + JsonParser pushing fields into a counting sink
-//   read+parse+app = + BatchSink (direct column writes) + build_batch
-//
-// Usage: riffle_profile <input.jsonl>
 #include <chrono>
 #include <cstdio>
 #include <expected>
@@ -45,7 +37,7 @@ InferredSchema bench_schema() {
                         {"latency_ms", ColumnType::DOUBLE, true, "latency_ms"},
                         {"user_id", ColumnType::INT64, true, "user_id"}}};
 }
-}  // namespace
+}
 
 static double time_read(const std::string& path) {
     std::ifstream in(path);

@@ -12,13 +12,9 @@
 
 namespace riffle {
 
-// Reduce a column's observed types to a single type per the conflict policy.
 std::expected<ColumnType, std::string> resolve_type_conflict(std::span<const ColumnType> seen,
                                                              TypeConflictPolicy policy);
 
-// RowSink that observes field types over a sample to infer an output schema.
-// Columns appear in first-seen order; per path the distinct observed types are
-// resolved by the conflict policy. ISO-8601 strings are inferred as TIMESTAMP.
 class InferenceSink : public RowSink {
 public:
     explicit InferenceSink(TypeConflictPolicy policy) : policy_(policy) {}
@@ -34,7 +30,6 @@ private:
     std::size_t rows_ = 0;
 };
 
-// Overlay an explicit schema onto an inferred one (replace by name, else append).
 InferredSchema merge_override(InferredSchema inferred, const InferredSchema& override);
 
-}  // namespace riffle
+}

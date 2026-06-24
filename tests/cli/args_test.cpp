@@ -14,7 +14,7 @@ std::expected<Config, std::string> parse(std::vector<std::string> argv) {
     return parse_args(argv);
 }
 
-}  // namespace
+}
 
 TEST(ParseArgs, ReadsInputAndOutput) {
     auto cfg = parse({"in.jsonl", "-o", "out.parquet"});
@@ -64,4 +64,4 @@ TEST(ParseArgs, RejectsMissingSchemaFile) {
     EXPECT_FALSE(parse({"in.jsonl", "-o", "o.parquet", "--schema", "/no/such.json"}).has_value());
 }
 
-}  // namespace riffle
+}

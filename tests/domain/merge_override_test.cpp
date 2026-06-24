@@ -10,7 +10,7 @@ ColumnSchema col(std::string name, ColumnType type) {
     return {std::move(name), type, true, {}};
 }
 
-}  // namespace
+}
 
 TEST(MergeOverride, ReplacesExistingColumnType) {
     InferredSchema inferred{.columns = {col("id", ColumnType::INT64)}};
@@ -35,4 +35,4 @@ TEST(MergeOverride, LeavesUnreferencedColumnsUntouched) {
     EXPECT_EQ(merged.columns[1].type, ColumnType::BOOL);
 }
 
-}  // namespace riffle
+}

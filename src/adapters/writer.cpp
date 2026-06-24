@@ -12,4 +12,4 @@ std::expected<std::unique_ptr<Writer>, std::string> open_writer(const Config& co
     return open_parquet_writer(config, schema);
 }
 
-}  // namespace riffle
+}

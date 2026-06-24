@@ -34,7 +34,7 @@ RecordBatch two_int_rows() {
     return build_batch(builder).value();
 }
 
-}  // namespace
+}
 
 TEST(ColumnarRawWriter, RoundTripsIntColumn) {
     InferredSchema schema{.columns = {{"v", ColumnType::INT64, true, "v"}}};
@@ -51,15 +51,15 @@ TEST(ColumnarRawWriter, RoundTripsIntColumn) {
     char magic[8] = {};
     in.read(magic, 8);
     EXPECT_EQ(std::string(magic, 8), "RIFFLEC1");
-    EXPECT_EQ(read<std::uint32_t>(in), 1u);              // columns
-    EXPECT_EQ(read<std::uint32_t>(in), 1u);              // name length
-    EXPECT_EQ(static_cast<char>(in.get()), 'v');         // name
-    in.get();                                            // column type byte
-    EXPECT_EQ(read<std::uint32_t>(in), 2u);              // rows in batch
-    EXPECT_EQ(read<std::uint8_t>(in), 0u);               // row 0 not null
+    EXPECT_EQ(read<std::uint32_t>(in), 1u);
+    EXPECT_EQ(read<std::uint32_t>(in), 1u);
+    EXPECT_EQ(static_cast<char>(in.get()), 'v');
+    in.get();
+    EXPECT_EQ(read<std::uint32_t>(in), 2u);
+    EXPECT_EQ(read<std::uint8_t>(in), 0u);
     EXPECT_EQ(read<std::int64_t>(in), 10);
-    EXPECT_EQ(read<std::uint8_t>(in), 0u);               // row 1 not null
+    EXPECT_EQ(read<std::uint8_t>(in), 0u);
     EXPECT_EQ(read<std::int64_t>(in), 20);
 }
 
-}  // namespace riffle
+}

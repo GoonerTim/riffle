@@ -12,7 +12,7 @@ ColumnType resolve(std::vector<ColumnType> seen, TypeConflictPolicy policy) {
     return resolve_type_conflict(seen, policy).value();
 }
 
-}  // namespace
+}
 
 TEST(ResolveTypeConflict, EmptyMeansNull) {
     EXPECT_EQ(resolve({}, TypeConflictPolicy::WIDEN), ColumnType::NULLTYPE);
@@ -48,4 +48,4 @@ TEST(ResolveTypeConflict, ErrorPolicyRejectsConflict) {
     EXPECT_FALSE(resolve_type_conflict(seen, TypeConflictPolicy::ERROR).has_value());
 }
 
-}  // namespace riffle
+}

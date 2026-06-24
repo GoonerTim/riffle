@@ -68,7 +68,7 @@ std::expected<Config, std::string> finalize(Config draft) {
     }
 }
 
-}  // namespace
+}
 
 std::expected<Config, std::string> parse_args(std::span<const std::string> args) {
     Config draft;
@@ -88,4 +88,4 @@ std::expected<Config, std::string> parse_args(std::span<const std::string> args)
     return finalize(std::move(draft));
 }
 
-}  // namespace riffle
+}

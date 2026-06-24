@@ -32,7 +32,7 @@ Config config_for(const std::string& in, const std::string& out) {
     return make_Config({.inputs = {in}, .output_path = out});
 }
 
-}  // namespace
+}
 
 TEST(Convert, WritesParquetFromJsonl) {
     auto in = write_file("c_ok.jsonl", "{\"code\":200}\n{\"code\":404}\n{\"code\":500}\n");
@@ -75,7 +75,7 @@ TEST(Convert, SchemaOverrideForcesColumnType) {
 
 TEST(Convert, WritesEveryRowWhenInputExceedsSample) {
     std::string body;
-    const int rows = 10005;  // just past INFER_SAMPLE_ROWS
+    const int rows = 10005;
     for (int i = 0; i < rows; ++i) body += "{\"v\":" + std::to_string(i) + "}\n";
     auto in = write_file("c_count.jsonl", body);
     auto out = ::testing::TempDir() + "c_count.parquet";
@@ -87,7 +87,7 @@ TEST(Convert, WritesEveryRowWhenInputExceedsSample) {
 
 TEST(Convert, AutoWidensIntToDoubleBeyondSample) {
     std::string body;
-    for (int i = 0; i < 10001; ++i) body += "{\"v\":1}\n";  // exceeds INFER_SAMPLE_ROWS
+    for (int i = 0; i < 10001; ++i) body += "{\"v\":1}\n";
     body += "{\"v\":2.5}\n";
     auto in = write_file("c_widen.jsonl", body);
     auto out = ::testing::TempDir() + "c_widen.parquet";
@@ -105,4 +105,4 @@ TEST(Convert, AbortsOnBadLineWhenPolicyIsAbort) {
     EXPECT_EQ(stats.final_state, PipelineState::ABORTED);
 }
 
-}  // namespace riffle
+}

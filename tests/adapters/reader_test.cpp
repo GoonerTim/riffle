@@ -37,4 +37,4 @@ TEST(LineReader, StripsCarriageReturn) {
     EXPECT_EQ(reader.next(), "b");
 }
 
-}  // namespace riffle
+}

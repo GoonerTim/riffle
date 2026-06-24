@@ -11,7 +11,6 @@ struct Cal {
     int year, month, day, hour, min, sec;
 };
 
-// Days from civil date to the Unix epoch (Howard Hinnant's algorithm).
 std::int64_t days_from_civil(int y, unsigned m, unsigned d) {
     y -= m <= 2;
     const int era = (y >= 0 ? y : y - 399) / 400;
@@ -44,7 +43,7 @@ std::int64_t fractional_us(std::string_view text) {
     return micros;
 }
 
-}  // namespace
+}
 
 std::optional<std::int64_t> parse_timestamp_us(std::string_view text) {
     Cal c{};
@@ -61,4 +60,4 @@ bool looks_like_timestamp(std::string_view text) {
     return parse_timestamp_us(text).has_value();
 }
 
-}  // namespace riffle
+}

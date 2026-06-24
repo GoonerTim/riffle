@@ -52,4 +52,4 @@ TEST(PipelineStateSerde, ToStringCoversTerminalStates) {
     EXPECT_EQ(to_string(PipelineState::ABORTED), "aborted");
 }
 
-}  // namespace riffle
+}

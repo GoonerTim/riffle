@@ -43,4 +43,4 @@ TEST(ParseSchemaJson, RejectsMissingName) {
     EXPECT_FALSE(parse_schema_json(R"({"columns":[{"type":"int64"}]})").has_value());
 }
 
-}  // namespace riffle
+}

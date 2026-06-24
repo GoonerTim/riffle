@@ -13,7 +13,6 @@ namespace {
 
 using FieldList = std::initializer_list<std::pair<std::string_view, CellValue>>;
 
-// Feed one row of (path, value) fields into the sink.
 void feed(InferenceSink& sink, FieldList fields) {
     sink.begin_row();
     for (const auto& [path, value] : fields) (void)sink.field(path, value);
@@ -25,7 +24,7 @@ CellValue dbl(double v) { return CellValue{v}; }
 CellValue str(std::string v) { return CellValue{std::move(v)}; }
 CellValue nul() { return CellValue{}; }
 
-}  // namespace
+}
 
 TEST(InferSchema, ColumnsFollowFirstAppearanceOrder) {
     InferenceSink sink(TypeConflictPolicy::WIDEN);
@@ -77,4 +76,4 @@ TEST(InferSchema, MixedTimestampAndPlainStringIsString) {
     EXPECT_EQ(sink.schema().columns[0].type, ColumnType::STRING);
 }
 
-}  // namespace riffle
+}

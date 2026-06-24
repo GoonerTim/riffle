@@ -20,7 +20,7 @@ ColumnType infer_type(const CellValue& value) {
     return type;
 }
 
-}  // namespace
+}
 
 std::expected<void, std::string> InferenceSink::field(std::string_view path, CellValue value) {
     auto [it, inserted] = seen_.try_emplace(std::string(path));
@@ -64,7 +64,7 @@ void apply_override(std::vector<ColumnSchema>& columns, const ColumnSchema& colu
     columns.push_back(column);
 }
 
-}  // namespace
+}
 
 InferredSchema merge_override(InferredSchema inferred, const InferredSchema& override) {
     for (const auto& column : override.columns) {
@@ -73,4 +73,4 @@ InferredSchema merge_override(InferredSchema inferred, const InferredSchema& ove
     return make_InferredSchema(inferred);
 }
 
-}  // namespace riffle
+}

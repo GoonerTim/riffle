@@ -47,7 +47,6 @@ std::expected<void, std::string> walk_field(od::field field, std::string_view pr
     if (value.type() == od::json_type::object && depth + 1 < MAX_FLATTEN_DEPTH) {
         return walk(value.get_object(), join_path(prefix, key), depth + 1, sink);
     }
-    // Flat key (common case) needs no path allocation: pass the key view directly.
     if (prefix.empty()) return sink.field(key, cell_of(value));
     return sink.field(join_path(prefix, key), cell_of(value));
 }
@@ -62,11 +61,11 @@ std::expected<void, std::string> walk(od::object object, std::string_view prefix
     return {};
 }
 
-}  // namespace
+}
 
 struct JsonParser::Impl {
     od::parser parser;
-    std::string buffer;  // reused across lines to avoid per-line padding allocation
+    std::string buffer;
 };
 
 JsonParser::JsonParser() : impl_(std::make_unique<Impl>()) {}
@@ -86,4 +85,4 @@ std::expected<void, std::string> JsonParser::parse(std::string_view line, RowSin
     return sink.end_row();
 }
 
-}  // namespace riffle
+}

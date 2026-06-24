@@ -6,6 +6,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include "riffle/batch.hpp"
@@ -25,12 +26,11 @@ std::unique_ptr<std::istream> open_stream(const std::string& path) {
     return std::make_unique<std::ifstream>(path);
 }
 
-// Yields raw non-empty lines across all configured inputs in order.
 class ChainedLines {
 public:
     explicit ChainedLines(std::vector<std::string> paths) : paths_(std::move(paths)) { advance(); }
 
-    std::optional<std::string> next() {
+    std::optional<std::string_view> next() {
         while (reader_) {
             if (auto line = reader_->next()) return line;
             advance();
@@ -53,13 +53,12 @@ private:
     std::unique_ptr<LineReader> reader_;
 };
 
-// Phase 1: read up to INFER_SAMPLE_ROWS lines, keep them, and infer the schema.
 std::vector<std::string> read_sample(ChainedLines& lines, std::size_t limit) {
     std::vector<std::string> sample;
     while (sample.size() < limit) {
         auto line = lines.next();
         if (!line) break;
-        sample.push_back(std::move(*line));
+        sample.emplace_back(*line);
     }
     return sample;
 }
@@ -67,19 +66,18 @@ std::vector<std::string> read_sample(ChainedLines& lines, std::size_t limit) {
 InferredSchema infer(const Config& cfg, const std::vector<std::string>& sample) {
     JsonParser parser;
     InferenceSink sink(cfg.type_conflict);
-    for (const auto& line : sample) (void)parser.parse(line, sink);  // bad lines: handled in phase 2
+    for (const auto& line : sample) (void)parser.parse(line, sink);
     auto schema = sink.schema();
     if (cfg.schema_override.columns.empty()) return schema;
     return merge_override(schema, cfg.schema_override);
 }
 
-// Phase 2 conversion context: parse each line straight into the batch builder.
 struct Ctx {
     const Config& cfg;
     JsonParser& parser;
     BatchSink& sink;
     BatchBuilder& builder;
-    std::unique_ptr<Writer> writer;  // opened lazily on first flush
+    std::unique_ptr<Writer> writer;
     ConvertStats stats;
     std::size_t line_no = 0;
 };
@@ -117,7 +115,7 @@ std::expected<void, std::string> on_bad_line(Ctx& ctx, std::string_view line, st
     return {};
 }
 
-std::expected<void, std::string> process(Ctx& ctx, const std::string& line) {
+std::expected<void, std::string> process(Ctx& ctx, std::string_view line) {
     ++ctx.line_no;
     if (auto ok = ctx.parser.parse(line, ctx.sink); !ok) return on_bad_line(ctx, line, ok.error());
     ++ctx.stats.rows_read;
@@ -137,7 +135,7 @@ std::expected<void, std::string> pump(Ctx& ctx, const std::vector<std::string>& 
 }
 
 std::expected<void, std::string> finalize(Ctx& ctx) {
-    if (auto ok = ensure_writer(ctx); !ok) return ok;  // empty input → valid empty file
+    if (auto ok = ensure_writer(ctx); !ok) return ok;
     return ctx.writer->finish();
 }
 
@@ -150,7 +148,7 @@ std::uint64_t elapsed_ms(Clock::time_point start) {
     return static_cast<std::uint64_t>(duration_cast<milliseconds>(Clock::now() - start).count());
 }
 
-}  // namespace
+}
 
 ConvertStats convert(const Config& cfg) {
     const auto start = Clock::now();
@@ -168,4 +166,4 @@ ConvertStats convert(const Config& cfg) {
     return ctx.stats;
 }
 
-}  // namespace riffle
+}

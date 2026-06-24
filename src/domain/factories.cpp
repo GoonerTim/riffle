@@ -18,7 +18,7 @@ bool has_duplicate_names(const std::vector<ColumnSchema>& columns) {
     return false;
 }
 
-}  // namespace
+}
 
 ColumnSchema make_ColumnSchema(ColumnSchema draft) {
     require(!draft.name.empty(), "ColumnSchema.name must not be empty");
@@ -48,4 +48,4 @@ ConvertStats make_ConvertStats() {
     return {};
 }
 
-}  // namespace riffle
+}

@@ -25,7 +25,7 @@ ColumnType widen(const std::vector<ColumnType>& types) {
     return all_numeric(types) ? ColumnType::DOUBLE : ColumnType::STRING;
 }
 
-}  // namespace
+}
 
 std::expected<ColumnType, std::string> resolve_type_conflict(std::span<const ColumnType> seen,
                                                              TypeConflictPolicy policy) {
@@ -37,4 +37,4 @@ std::expected<ColumnType, std::string> resolve_type_conflict(std::span<const Col
     return std::unexpected("conflicting column types");
 }
 
-}  // namespace riffle
+}

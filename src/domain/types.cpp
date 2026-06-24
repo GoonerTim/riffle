@@ -68,7 +68,7 @@ constexpr std::array<Row<PipelineState>, 7> kStates{{
     {PipelineState::ABORTED, "aborted"},
 }};
 
-}  // namespace
+}
 
 std::string_view to_string(ColumnType type) { return name_of<ColumnType>(kColumnTypes, type); }
 std::string_view to_string(OnError value) { return name_of<OnError>(kOnError, value); }
@@ -103,4 +103,4 @@ ColumnType column_type_of(const CellValue& value) {
     }
 }
 
-}  // namespace riffle
+}

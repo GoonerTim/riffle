@@ -39,7 +39,7 @@ RecordBatch one_int_column() {
     return build_batch(builder).value();
 }
 
-}  // namespace
+}
 
 TEST(ParquetWriter, RoundTripsBatch) {
     InferredSchema schema{.columns = {{"v", ColumnType::INT64, true, "v"}}};
@@ -59,4 +59,4 @@ TEST(ParquetWriter, RoundTripsBatch) {
     EXPECT_EQ(col->Value(1), 20);
 }
 
-}  // namespace riffle
+}

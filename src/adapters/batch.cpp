@@ -38,13 +38,11 @@ std::string to_text(const CellValue& value) {
     return {};
 }
 
-// ---- per-cell native accumulation (no Arrow calls on the hot path) ----------
-
 void push_null(ColumnBuilder& column) {
     switch (column.schema.type) {
         case ColumnType::DOUBLE: column.doubles.push_back(0); break;
         case ColumnType::STRING: column.strings.emplace_back(); break;
-        default: column.ints.push_back(0); break;  // INT64 / BOOL / TIMESTAMP
+        default: column.ints.push_back(0); break;
     }
     column.valid.push_back(0);
     ++column.null_count;
@@ -110,8 +108,6 @@ bool cell_fits(ColumnType column, const CellValue& value) {
     return column == ColumnType::STRING;
 }
 
-// ---- bulk conversion of native buffers to Arrow arrays (once per batch) -----
-
 const std::uint8_t* valid_ptr(const ColumnBuilder& column) {
     return column.null_count == 0 ? nullptr : column.valid.data();
 }
@@ -172,8 +168,6 @@ void reset(ColumnBuilder& column) {
     column.null_count = 0;
 }
 
-// ---- widening of accumulated native buffers --------------------------------
-
 void widen_to_double(ColumnBuilder& column) {
     for (auto v : column.ints) column.doubles.push_back(static_cast<double>(v));
     column.ints.clear();
@@ -189,7 +183,7 @@ void widen_to_string(ColumnBuilder& column) {
     column.doubles.clear();
 }
 
-}  // namespace
+}
 
 std::shared_ptr<arrow::Schema> arrow_schema_of(const InferredSchema& schema) {
     arrow::FieldVector fields;
@@ -224,7 +218,7 @@ std::expected<void, std::string> ensure_fits(ColumnBuilder& column, const CellVa
     return widen_column(column, *target);
 }
 
-}  // namespace
+}
 
 BatchSink::BatchSink(BatchBuilder& builder, TypeConflictPolicy policy)
     : builder_(builder), policy_(policy), seen_(builder.columns.size(), 0) {
@@ -235,7 +229,7 @@ BatchSink::BatchSink(BatchBuilder& builder, TypeConflictPolicy policy)
 
 std::expected<void, std::string> BatchSink::field(std::string_view path, CellValue value) {
     auto it = index_.find(path);
-    if (it == index_.end() || seen_[it->second]) return {};  // unknown or duplicate key
+    if (it == index_.end() || seen_[it->second]) return {};
     auto& column = builder_.columns[it->second];
     if (auto ok = ensure_fits(column, value, policy_); !ok) {
         fatal_ = true;
@@ -272,4 +266,4 @@ std::expected<RecordBatch, std::string> build_batch(BatchBuilder& builder) {
     return RecordBatch{data, std::exchange(builder.n_rows, 0)};
 }
 
-}  // namespace riffle
+}

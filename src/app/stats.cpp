@@ -16,4 +16,4 @@ int exit_code(const ConvertStats& stats) {
     return stats.final_state == PipelineState::DONE ? EXIT_OK : EXIT_DATA;
 }
 
-}  // namespace riffle
+}

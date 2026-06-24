@@ -13,7 +13,6 @@
 namespace riffle {
 namespace {
 
-// Records the fields the parser pushes, for assertions.
 class RecordSink : public RowSink {
 public:
     void begin_row() override { ++rows; }
@@ -34,7 +33,7 @@ public:
     int rows = 0;
 };
 
-}  // namespace
+}
 
 TEST(JsonParser, ParsesScalarFields) {
     JsonParser parser;
@@ -63,7 +62,7 @@ TEST(JsonParser, RejectsNonObject) {
     JsonParser parser;
     RecordSink sink;
     EXPECT_FALSE(parser.parse("123", sink).has_value());
-    EXPECT_EQ(sink.rows, 0);  // begin_row not reached for a non-object line
+    EXPECT_EQ(sink.rows, 0);
 }
 
 TEST(JsonParser, CallsBeginRowOncePerObject) {
@@ -73,4 +72,4 @@ TEST(JsonParser, CallsBeginRowOncePerObject) {
     EXPECT_EQ(sink.rows, 1);
 }
 
-}  // namespace riffle
+}

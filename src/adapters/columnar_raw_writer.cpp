@@ -65,7 +65,6 @@ void write_header(std::ostream& out, const InferredSchema& schema) {
     }
 }
 
-// Minimal self-describing columnar dump (debug/test backend).
 class ColumnarRawWriter : public Writer {
 public:
     ColumnarRawWriter(std::ofstream out, InferredSchema schema)
@@ -90,7 +89,7 @@ private:
     InferredSchema schema_;
 };
 
-}  // namespace
+}
 
 std::expected<std::unique_ptr<Writer>, std::string> open_columnar_raw_writer(
     const Config& config, const InferredSchema& schema) {
@@ -100,4 +99,4 @@ std::expected<std::unique_ptr<Writer>, std::string> open_columnar_raw_writer(
     return std::make_unique<ColumnarRawWriter>(std::move(out), schema);
 }
 
-}  // namespace riffle
+}

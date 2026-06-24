@@ -55,7 +55,7 @@ std::expected<InferredSchema, std::string> parse_columns(simdjson::dom::element 
     return make_InferredSchema(schema);
 }
 
-}  // namespace
+}
 
 std::expected<InferredSchema, std::string> parse_schema_json(std::string_view text) {
     simdjson::dom::parser parser;
@@ -80,4 +80,4 @@ std::expected<InferredSchema, std::string> load_schema_file(const std::string& p
     return parse_schema_json(buffer.str());
 }
 
-}  // namespace riffle
+}

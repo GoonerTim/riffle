@@ -68,4 +68,4 @@ TEST(MakeConvertStats, StartsZeroedInInit) {
     EXPECT_EQ(stats.final_state, PipelineState::INIT);
 }
 
-}  // namespace riffle
+}

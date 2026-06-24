@@ -21,7 +21,6 @@ std::shared_ptr<parquet::WriterProperties> make_props(CompressionCodec codec) {
     return parquet::WriterProperties::Builder().compression(to_codec(codec))->build();
 }
 
-// Arrow/Parquet-backed Writer.
 class ParquetWriter : public Writer {
 public:
     ParquetWriter(std::unique_ptr<parquet::arrow::FileWriter> writer,
@@ -45,7 +44,7 @@ private:
     std::shared_ptr<arrow::io::FileOutputStream> sink_;
 };
 
-}  // namespace
+}
 
 std::expected<std::unique_ptr<Writer>, std::string> open_parquet_writer(
     const Config& config, const InferredSchema& schema) {
@@ -58,4 +57,4 @@ std::expected<std::unique_ptr<Writer>, std::string> open_parquet_writer(
     return std::make_unique<ParquetWriter>(std::move(*writer), *sink);
 }
 
-}  // namespace riffle
+}

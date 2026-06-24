@@ -9,7 +9,6 @@
 
 namespace riffle {
 
-// Port: a sink that consumes record batches and finalizes an output file.
 class Writer {
 public:
     virtual ~Writer() = default;
@@ -17,8 +16,7 @@ public:
     virtual std::expected<void, std::string> finish() = 0;
 };
 
-// Open a writer for the configured output format and schema.
 std::expected<std::unique_ptr<Writer>, std::string> open_writer(const Config& config,
                                                                 const InferredSchema& schema);
 
-}  // namespace riffle
+}

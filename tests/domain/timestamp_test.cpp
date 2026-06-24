@@ -36,4 +36,4 @@ TEST(LooksLikeTimestamp, RejectsPlainString) {
     EXPECT_FALSE(looks_like_timestamp("info"));
 }
 
-}  // namespace riffle
+}

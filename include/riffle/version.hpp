@@ -4,7 +4,6 @@
 
 namespace riffle {
 
-// Returns the project's semantic version string.
 std::string_view version();
 
-}  // namespace riffle
+}
