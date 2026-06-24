@@ -1,10 +1,10 @@
-#include "riffle/schema.hpp"
-#include "riffle/types.hpp"
-
 #include <gtest/gtest.h>
 
 #include <string>
 #include <vector>
+
+#include "riffle/schema.hpp"
+#include "riffle/types.hpp"
 
 namespace riffle {
 namespace {
