@@ -16,15 +16,42 @@ The name is a double metaphor: a *riffle* is both a quick shuffle of a card deck
 
 ## Why Riffle
 
-- **Throughput first** — SIMD JSON parsing ([simdjson](https://github.com/simdjson/simdjson))
-  and columnar batching target on the order of **≥ 1 GB/s** on a single core.
 - **Constant memory** — one-pass streaming with bounded batches; RAM usage is **O(1)** in the
-  size of the input, not the size of the file.
+  size of the input, not the size of the file. This is the headline feature: convert files
+  **larger than RAM**.
+- **Fast single-core** — SIMD JSON parsing ([simdjson](https://github.com/simdjson/simdjson))
+  on-demand and batched columnar appends sustain **~100 MB/s** of input on one core.
 - **Zero-config** — the column schema is **inferred** from the data, with an optional explicit
   `--schema` override when inference guesses wrong.
 - **One static binary** — no Python/JVM runtime. Drops cleanly into pipelines and containers.
 
 See the full design in [`docs/riffle.md`](docs/riffle.md).
+
+## Who it's for
+
+- **Data / backend engineers** who need JSON logs in a columnar store for analytics, without
+  standing up Spark or a Python data stack.
+- **DevOps / SRE** turning application, access or audit logs (`.jsonl`) into Parquet to query
+  with DuckDB, Spark, Trino/Athena, or pandas.
+- **Anyone on a laptop or small VM** who must convert a file **larger than available RAM** —
+  Riffle's flat memory footprint is exactly for this.
+- **Pipeline / container authors** who prefer a single dependency-free binary over a
+  Python/JVM runtime in an ETL step.
+
+## Use cases
+
+- **Log archival & analytics** — convert NDJSON application/access/audit logs to compact
+  Parquet for cheap columnar storage and fast queries.
+- **ETL ingestion stage** — a fast, memory-bounded "JSON-lines → Parquet" step inside a larger
+  pipeline (cron job, Airflow task, container step).
+- **Data-lake landing** — normalize heterogeneous JSON events into typed Parquet with an
+  inferred schema (or a pinned `--schema`).
+- **Ad-hoc conversion** — turn a huge one-off `.jsonl` dump into Parquet on a laptop where
+  pandas/pyarrow would run out of memory.
+- **Streaming from pipes** — `gunzip -c big.jsonl.gz | riffle - -o out.parquet`, converting on
+  the fly without a temporary file.
+- **As a library** — embed `riffle::convert` in a C++ service to emit Parquet from JSON without
+  pulling in a heavy data framework.
 
 ## Benchmarks
 
