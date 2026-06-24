@@ -61,4 +61,17 @@ TEST(InferSchema, CountsSampledRows) {
     EXPECT_EQ(schema.sampled_rows, 3u);
 }
 
+TEST(InferSchema, IsoStringsBecomeTimestamp) {
+    FakeSource src({Row{{str("ts", "2026-06-24T10:00:00Z")}},
+                    Row{{str("ts", "2026-06-24T10:00:01Z")}}});
+    auto schema = infer_schema(src, TypeConflictPolicy::WIDEN);
+    EXPECT_EQ(schema.columns[0].type, ColumnType::TIMESTAMP);
+}
+
+TEST(InferSchema, MixedTimestampAndPlainStringIsString) {
+    FakeSource src({Row{{str("ts", "2026-06-24T10:00:00Z")}}, Row{{str("ts", "oops")}}});
+    auto schema = infer_schema(src, TypeConflictPolicy::WIDEN);
+    EXPECT_EQ(schema.columns[0].type, ColumnType::STRING);
+}
+
 }  // namespace riffle

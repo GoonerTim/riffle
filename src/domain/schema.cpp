@@ -4,12 +4,22 @@
 #include <map>
 #include <ranges>
 #include <string>
+#include <variant>
 #include <vector>
 
 #include "riffle/factories.hpp"
+#include "riffle/timestamp.hpp"
 
 namespace riffle {
 namespace {
+
+ColumnType infer_type(const CellValue& value) {
+    auto type = column_type_of(value);
+    if (type == ColumnType::STRING && looks_like_timestamp(std::get<std::string>(value))) {
+        return ColumnType::TIMESTAMP;
+    }
+    return type;
+}
 
 // Accumulates, per flattened path, the distinct observed types in arrival order.
 struct Accum {
@@ -20,7 +30,7 @@ struct Accum {
 void observe(Accum& acc, const Field& field) {
     auto& types = acc.seen[field.path];
     if (types.empty()) acc.order.push_back(field.path);
-    auto type = column_type_of(field.value);
+    auto type = infer_type(field.value);
     if (std::ranges::find(types, type) == types.end()) types.push_back(type);
 }
 

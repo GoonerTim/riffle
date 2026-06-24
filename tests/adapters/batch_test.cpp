@@ -43,6 +43,17 @@ TEST(Batch, MissingFieldBecomesNull) {
     EXPECT_TRUE(b->IsNull(0));
 }
 
+TEST(Batch, TimestampColumnParsesIso) {
+    InferredSchema schema{.columns = {{"ts", ColumnType::TIMESTAMP, true, "ts"}}};
+    auto builder = make_batch_builder(schema);
+    Row row{{{"ts", CellValue{std::string("1970-01-01T00:00:01Z")}}}};
+    ASSERT_TRUE(append_row(builder, row).has_value());
+    auto batch = build_batch(builder);
+    ASSERT_TRUE(batch.has_value());
+    auto ts = std::static_pointer_cast<arrow::TimestampArray>(batch->data->column(0));
+    EXPECT_EQ(ts->Value(0), 1000000);
+}
+
 TEST(Batch, WidenColumnIntToDouble) {
     InferredSchema schema{.columns = {{"v", ColumnType::INT64, true, "v"}}};
     auto builder = make_batch_builder(schema);

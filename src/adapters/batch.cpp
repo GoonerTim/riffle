@@ -7,6 +7,8 @@
 #include <utility>
 #include <variant>
 
+#include "riffle/timestamp.hpp"
+
 namespace riffle {
 namespace {
 
@@ -21,6 +23,7 @@ std::shared_ptr<arrow::DataType> arrow_type(ColumnType type) {
         case ColumnType::DOUBLE: return arrow::float64();
         case ColumnType::BOOL: return arrow::boolean();
         case ColumnType::STRING: return arrow::utf8();
+        case ColumnType::TIMESTAMP: return arrow::timestamp(arrow::TimeUnit::MICRO, "UTC");
         default: return arrow::null();
     }
 }
@@ -31,6 +34,9 @@ std::shared_ptr<arrow::ArrayBuilder> make_array_builder(ColumnType type) {
         case ColumnType::DOUBLE: return std::make_shared<arrow::DoubleBuilder>();
         case ColumnType::BOOL: return std::make_shared<arrow::BooleanBuilder>();
         case ColumnType::STRING: return std::make_shared<arrow::StringBuilder>();
+        case ColumnType::TIMESTAMP:
+            return std::make_shared<arrow::TimestampBuilder>(
+                arrow::timestamp(arrow::TimeUnit::MICRO, "UTC"), arrow::default_memory_pool());
         default: return std::make_shared<arrow::NullBuilder>();
     }
 }
@@ -80,6 +86,14 @@ std::expected<void, std::string> append_string(ColumnBuilder& column, const Cell
     return check(as<arrow::StringBuilder>(column).Append(to_text(value)));
 }
 
+std::expected<void, std::string> append_timestamp(ColumnBuilder& column, const CellValue& value) {
+    auto* text = std::get_if<std::string>(&value);
+    if (!text) return std::unexpected("timestamp column got non-string value");
+    auto micros = parse_timestamp_us(*text);
+    if (!micros) return std::unexpected("invalid timestamp: " + *text);
+    return check(as<arrow::TimestampBuilder>(column).Append(*micros));
+}
+
 std::expected<void, std::string> append_cell(ColumnBuilder& column, const CellValue& value) {
     if (std::holds_alternative<std::monostate>(value)) return append_null(column);
     switch (column.schema.type) {
@@ -87,6 +101,7 @@ std::expected<void, std::string> append_cell(ColumnBuilder& column, const CellVa
         case ColumnType::DOUBLE: return append_double(column, value);
         case ColumnType::BOOL: return append_bool(column, value);
         case ColumnType::STRING: return append_string(column, value);
+        case ColumnType::TIMESTAMP: return append_timestamp(column, value);
         default: return append_null(column);
     }
 }

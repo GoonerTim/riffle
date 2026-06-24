@@ -25,6 +25,7 @@ add_library(riffle_core
   src/domain/factories.cpp
   src/domain/type_resolve.cpp
   src/domain/schema.cpp
+  src/domain/timestamp.cpp
   src/adapters/batch.cpp
   src/adapters/parquet_writer.cpp
   src/adapters/reader.cpp
@@ -58,6 +59,7 @@ add_executable(riffle_tests
   tests/domain/type_resolve_test.cpp
   tests/domain/infer_schema_test.cpp
   tests/domain/merge_override_test.cpp
+  tests/domain/timestamp_test.cpp
   tests/adapters/batch_test.cpp
   tests/adapters/parquet_writer_test.cpp
   tests/adapters/reader_test.cpp
