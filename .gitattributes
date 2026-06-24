@@ -1,0 +1,16 @@
+# Normalize line endings: store everything as LF in the repo
+* text=auto eol=lf
+
+# Explicitly text
+*.cpp   text
+*.hpp   text
+*.h     text
+*.md    text
+*.yml   text
+*.yaml  text
+Justfile text
+*.cmake text
+CMakeLists.txt text
+
+# Binary (never normalize)
+*.parquet binary

@@ -1,0 +1,74 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Cancel superseded runs on the same ref
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    name: Build & test (${{ matrix.build_type }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        build_type: [Debug, Release]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            cmake ninja-build clang clang-tidy clang-format \
+            libarrow-dev libparquet-dev libzstd-dev libsnappy-dev
+
+      - name: Fetch simdjson
+        run: git clone --depth 1 https://github.com/simdjson/simdjson third_party/simdjson
+
+      - name: Configure
+        run: >
+          cmake -S . -B build -G Ninja
+          -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+          -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+
+      - name: Build
+        run: cmake --build build
+
+      - name: Test
+        run: ctest --test-dir build --output-on-failure
+
+  lint:
+    name: Format & static analysis
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install tooling
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            cmake ninja-build clang clang-tidy clang-format \
+            libarrow-dev libparquet-dev libzstd-dev libsnappy-dev
+
+      - name: Fetch simdjson
+        run: git clone --depth 1 https://github.com/simdjson/simdjson third_party/simdjson
+
+      - name: Check formatting
+        run: |
+          files=$(git ls-files '*.cpp' '*.hpp' '*.h')
+          if [ -n "$files" ]; then clang-format --dry-run --Werror $files; fi
+
+      - name: Configure for clang-tidy
+        run: cmake -S . -B build -G Ninja -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+
+      - name: Run clang-tidy
+        run: |
+          files=$(git ls-files '*.cpp' '*.hpp')
+          if [ -n "$files" ]; then clang-tidy -p build $files; fi
