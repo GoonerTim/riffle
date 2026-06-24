@@ -93,4 +93,14 @@ std::expected<OutputFormat, std::string> parse_output_format(std::string_view te
     return value_of<OutputFormat>(kFormats, text);
 }
 
+ColumnType column_type_of(const CellValue& value) {
+    switch (value.index()) {
+        case 1: return ColumnType::INT64;
+        case 2: return ColumnType::DOUBLE;
+        case 3: return ColumnType::BOOL;
+        case 4: return ColumnType::STRING;
+        default: return ColumnType::NULLTYPE;
+    }
+}
+
 }  // namespace riffle

@@ -5,11 +5,26 @@
 #include <expected>
 #include <string>
 #include <string_view>
+#include <variant>
 #include <vector>
 
 #include "riffle/constants.hpp"
 
 namespace riffle {
+
+// A single JSON scalar value; monostate represents null/absent.
+using CellValue = std::variant<std::monostate, std::int64_t, double, bool, std::string>;
+
+// One field of a parsed row: flattened path + its value.
+struct Field {
+    std::string path;
+    CellValue value;
+};
+
+// A parsed input line as an ordered list of fields.
+struct Row {
+    std::vector<Field> fields;
+};
 
 // Logical type a JSON value maps to in the output schema.
 enum class ColumnType { INT64, DOUBLE, BOOL, STRING, TIMESTAMP, NULLTYPE };
@@ -41,6 +56,9 @@ std::expected<OnError, std::string> parse_on_error(std::string_view text);
 std::expected<TypeConflictPolicy, std::string> parse_type_conflict_policy(std::string_view text);
 std::expected<CompressionCodec, std::string> parse_compression_codec(std::string_view text);
 std::expected<OutputFormat, std::string> parse_output_format(std::string_view text);
+
+// Logical type a cell value carries (monostate → NULLTYPE).
+ColumnType column_type_of(const CellValue& value);
 
 // ---------------------------------------------------------------------------
 // Value structures (immutable data; constructed via make_* factories).
