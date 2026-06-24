@@ -9,9 +9,6 @@
 single machine, at disk speed, **without loading the input into RAM**. It fills the gap
 between "grep the log by hand" and "spin up Spark/pandas/DuckDB for one conversion".
 
-The name is a double metaphor: a *riffle* is both a quick shuffle of a card deck
-(restructuring rows into columns) and water running over stones (streaming).
-
 ---
 
 ## Why Riffle
