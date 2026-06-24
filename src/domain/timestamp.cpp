@@ -28,7 +28,7 @@ bool in_range(const Cal& c) {
 std::int64_t to_micros(const Cal& c) {
     const std::int64_t days =
         days_from_civil(c.year, static_cast<unsigned>(c.month), static_cast<unsigned>(c.day));
-    const std::int64_t secs = days * 86400 + c.hour * 3600 + c.min * 60 + c.sec;
+    const std::int64_t secs = days * 86400 + c.hour * 3600LL + c.min * 60LL + c.sec;
     return secs * 1000000;
 }
 

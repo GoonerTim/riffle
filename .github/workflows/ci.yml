@@ -62,11 +62,19 @@ jobs:
           sudo apt-get install -y -V ./apache-arrow-apt-source-latest-$(lsb_release --codename --short).deb
           sudo apt-get update
           sudo apt-get install -y -V \
-            cmake ninja-build g++ clang-tidy \
+            cmake ninja-build g++ \
             libarrow-dev libparquet-dev libzstd-dev libsnappy-dev \
             libsimdjson-dev libgtest-dev
           python3 -m pip install --user --break-system-packages clang-format==18.1.8
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Install clang-tidy 19 (matches local; parses C++23 <expected>)
+        run: |
+          set -e
+          wget https://apt.llvm.org/llvm.sh
+          chmod +x llvm.sh
+          sudo ./llvm.sh 19
+          sudo apt-get install -y clang-tidy-19
 
       - name: Check formatting
         run: |
@@ -77,8 +85,8 @@ jobs:
       - name: Configure for clang-tidy
         run: cmake -S . -B build -G Ninja -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 
-      - name: Run clang-tidy (advisory)
-        continue-on-error: true
+      - name: Run clang-tidy
         run: |
+          clang-tidy-19 --version
           files=$(git ls-files '*.cpp' '*.hpp')
-          if [ -n "$files" ]; then clang-tidy -p build $files; fi
+          if [ -n "$files" ]; then clang-tidy-19 -p build $files; fi

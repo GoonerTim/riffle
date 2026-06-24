@@ -45,17 +45,22 @@ const A& as_array(const arrow::Array& array) {
 void write_typed(std::ostream& out, Cell cell, ColumnType type) {
     switch (type) {
         case ColumnType::INT64:
-            return put_i64(out, as_array<arrow::Int64Array>(cell.array).Value(cell.index));
+            put_i64(out, as_array<arrow::Int64Array>(cell.array).Value(cell.index));
+            break;
         case ColumnType::DOUBLE:
-            return put_f64(out, as_array<arrow::DoubleArray>(cell.array).Value(cell.index));
+            put_f64(out, as_array<arrow::DoubleArray>(cell.array).Value(cell.index));
+            break;
         case ColumnType::BOOL:
-            return put_u8(out, as_array<arrow::BooleanArray>(cell.array).Value(cell.index));
+            put_u8(out, as_array<arrow::BooleanArray>(cell.array).Value(cell.index));
+            break;
         case ColumnType::TIMESTAMP:
-            return put_i64(out, as_array<arrow::TimestampArray>(cell.array).Value(cell.index));
+            put_i64(out, as_array<arrow::TimestampArray>(cell.array).Value(cell.index));
+            break;
         case ColumnType::STRING:
-            return put_str(out, as_array<arrow::StringArray>(cell.array).GetView(cell.index));
+            put_str(out, as_array<arrow::StringArray>(cell.array).GetView(cell.index));
+            break;
         default:
-            return;
+            break;
     }
 }
 

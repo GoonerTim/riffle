@@ -2,13 +2,30 @@
 Checks: >
   bugprone-*,
   performance-*,
+  clang-analyzer-*,
   modernize-*,
   readability-*,
-  cppcoreguidelines-*,
   -modernize-use-trailing-return-type,
+  -modernize-use-nodiscard,
+  -modernize-use-designated-initializers,
+  -modernize-use-std-print,
+  -bugprone-easily-swappable-parameters,
+  -bugprone-unchecked-optional-access,
+  -performance-enum-size,
+  -readability-braces-around-statements,
+  -readability-uppercase-literal-suffix,
+  -readability-magic-numbers,
   -readability-identifier-length,
-  -cppcoreguidelines-avoid-magic-numbers,
-  -readability-magic-numbers
-WarningsAsErrors: ''
-HeaderFilterRegex: '(src|include)/.*'
+  -readability-function-cognitive-complexity,
+  -readability-convert-member-functions-to-static,
+  -readability-named-parameter,
+  -readability-math-missing-parentheses,
+  -readability-implicit-bool-conversion,
+  -readability-isolate-declaration,
+  -readability-else-after-return,
+  -readability-qualified-auto
+WarningsAsErrors: '*'
+HeaderFilterRegex: '.*/(src|include)/.*'
 FormatStyle: file
+CheckOptions:
+  bugprone-unused-return-value.AllowCastToVoid: 'true'

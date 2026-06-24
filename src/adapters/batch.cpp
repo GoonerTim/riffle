@@ -289,7 +289,8 @@ std::expected<RecordBatch, std::string> build_batch(BatchBuilder& builder) {
         fields.push_back(arrow::field(column.schema.name, arrow_type(column.schema.type)));
         reset(column);
     }
-    auto data = arrow::RecordBatch::Make(arrow::schema(fields), builder.n_rows, arrays);
+    auto data = arrow::RecordBatch::Make(arrow::schema(fields),
+                                         static_cast<std::int64_t>(builder.n_rows), arrays);
     return RecordBatch{data, std::exchange(builder.n_rows, 0)};
 }
 

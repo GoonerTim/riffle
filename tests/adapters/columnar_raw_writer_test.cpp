@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 
+#include <array>
 #include <cstdint>
 #include <fstream>
 #include <string>
@@ -48,9 +49,9 @@ TEST(ColumnarRawWriter, RoundTripsIntColumn) {
     ASSERT_TRUE((*writer)->finish().has_value());
 
     std::ifstream in(path, std::ios::binary);
-    char magic[8] = {};
-    in.read(magic, 8);
-    EXPECT_EQ(std::string(magic, 8), "RIFFLEC1");
+    std::array<char, 8> magic{};
+    in.read(magic.data(), magic.size());
+    EXPECT_EQ(std::string(magic.data(), magic.size()), "RIFFLEC1");
     EXPECT_EQ(read<std::uint32_t>(in), 1u);
     EXPECT_EQ(read<std::uint32_t>(in), 1u);
     EXPECT_EQ(static_cast<char>(in.get()), 'v');

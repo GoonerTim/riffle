@@ -4,6 +4,6 @@
 
 namespace riffle {
 
-ConvertStats convert(const Config& config);
+ConvertStats convert(const Config& cfg);
 
 }
