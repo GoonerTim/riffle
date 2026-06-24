@@ -113,7 +113,7 @@ sudo apt-get update
 sudo apt-get install -y -V \
     build-essential cmake ninja-build \
     libarrow-dev libparquet-dev libzstd-dev libsnappy-dev \
-    libsimdjson-dev libgtest-dev
+    libgtest-dev
 
 # Build
 cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release

@@ -14,8 +14,8 @@ namespace {
 bool is_value_option(std::string_view token) {
     return token == "-o" || token == "--output" || token == "--format" ||
            token == "--compression" || token == "--on-error" || token == "--type-conflict" ||
-           token == "--batch-rows" || token == "--schema" || token == "--select" ||
-           token == "--exclude" || token == "--rename";
+           token == "--batch-rows" || token == "--batch-bytes" || token == "--schema" ||
+           token == "--select" || token == "--exclude" || token == "--rename";
 }
 
 std::vector<std::string> split_csv(const std::string& value) {
@@ -51,12 +51,13 @@ std::expected<void, std::string> assign(T& dst, std::expected<T, E> parsed) {
     return {};
 }
 
-std::expected<void, std::string> set_batch_rows(Config& draft, const std::string& value) {
+std::expected<void, std::string> parse_size(std::size_t& dst, std::string_view key,
+                                            const std::string& value) {
     try {
-        draft.batch_rows = std::stoull(value);
+        dst = std::stoull(value);
         return {};
     } catch (const std::exception&) {
-        return std::unexpected("invalid --batch-rows value: " + value);
+        return std::unexpected("invalid " + std::string(key) + " value: " + value);
     }
 }
 
@@ -75,7 +76,8 @@ std::expected<void, std::string> apply_value(Config& draft, std::string_view key
         return {};
     }
     if (key == "--schema") return set_schema(draft, value);
-    if (key == "--batch-rows") return set_batch_rows(draft, value);
+    if (key == "--batch-rows") return parse_size(draft.batch_rows, key, value);
+    if (key == "--batch-bytes") return parse_size(draft.batch_bytes, key, value);
     if (key == "--select") {
         draft.projection.select = split_csv(value);
         return {};

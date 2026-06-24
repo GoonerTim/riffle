@@ -30,11 +30,9 @@ fmt:
 fmt-check:
     git ls-files '*.cpp' '*.hpp' '*.h' | xargs --no-run-if-empty clang-format --dry-run --Werror
 
-# Static analysis (clang-tidy 19); requires a configured build for compile_commands.json.
-# The two simdjson-including adapters are skipped: simdjson's amalgamated header
-# does not parse under clang on some distro versions.
+# Static analysis (clang-tidy); requires a configured build for compile_commands.json.
 lint: configure
-    git ls-files '*.cpp' '*.hpp' | grep -vE 'src/adapters/(json_parser|schema_json)\.cpp' | xargs --no-run-if-empty clang-tidy -p {{build_dir}}
+    git ls-files '*.cpp' '*.hpp' | xargs --no-run-if-empty clang-tidy -p {{build_dir}}
 
 # Build a release binary and run it against a sample
 run *ARGS: build

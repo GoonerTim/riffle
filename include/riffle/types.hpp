@@ -69,6 +69,7 @@ struct Config {
     Projection projection;
     CompressionCodec compression = CompressionCodec::ZSTD;
     std::size_t batch_rows = DEFAULT_BATCH_ROWS;
+    std::size_t batch_bytes = MAX_BATCH_BYTES;
     OnError on_error = OnError::SKIP;
     TypeConflictPolicy type_conflict = TypeConflictPolicy::WIDEN;
     bool emit_stats = false;

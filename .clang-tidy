@@ -25,7 +25,7 @@ Checks: >
   -readability-else-after-return,
   -readability-qualified-auto
 WarningsAsErrors: 'bugprone-*,performance-*,clang-analyzer-*,modernize-*,readability-*'
-HeaderFilterRegex: '.*/(src|include)/.*'
+HeaderFilterRegex: 'riffle/(src|include)/'
 FormatStyle: file
 CheckOptions:
   bugprone-unused-return-value.AllowCastToVoid: 'true'

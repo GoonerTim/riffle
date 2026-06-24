@@ -245,6 +245,11 @@ std::expected<void, std::string> ensure_fits(ColumnBuilder& column, const CellVa
     return widen_column(column, *target);
 }
 
+std::size_t value_bytes(const CellValue& value) {
+    if (const auto* s = std::get_if<std::string>(&value)) return s->size() + 1;
+    return sizeof(std::int64_t) + 1;
+}
+
 }
 
 BatchSink::BatchSink(BatchBuilder& builder, TypeConflictPolicy policy)
@@ -267,12 +272,16 @@ std::expected<void, std::string> BatchSink::field(std::string_view path, CellVal
         return ok;
     }
     seen_[it->second] = 1;
+    builder_.byte_size += value_bytes(value);
     return {};
 }
 
 std::expected<void, std::string> BatchSink::end_row() {
     for (std::size_t i = 0; i < builder_.columns.size(); ++i) {
-        if (!seen_[i]) push_null(builder_.columns[i]);
+        if (!seen_[i]) {
+            push_null(builder_.columns[i]);
+            builder_.byte_size += value_bytes(CellValue{});
+        }
         seen_[i] = 0;
     }
     ++builder_.n_rows;
@@ -291,6 +300,7 @@ std::expected<RecordBatch, std::string> build_batch(BatchBuilder& builder) {
     }
     auto data = arrow::RecordBatch::Make(arrow::schema(fields),
                                          static_cast<std::int64_t>(builder.n_rows), arrays);
+    builder.byte_size = 0;
     return RecordBatch{data, std::exchange(builder.n_rows, 0)};
 }
 

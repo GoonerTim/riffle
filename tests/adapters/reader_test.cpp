@@ -4,6 +4,8 @@
 
 #include <sstream>
 
+#include "riffle/constants.hpp"
+
 namespace riffle {
 
 TEST(LineReader, SplitsOnNewline) {
@@ -35,6 +37,22 @@ TEST(LineReader, StripsCarriageReturn) {
     LineReader reader(in);
     EXPECT_EQ(reader.next(), "a");
     EXPECT_EQ(reader.next(), "b");
+}
+
+TEST(LineReader, TruncatesOverLongLineAndResyncs) {
+    std::istringstream in("abcdef\nxy\n");
+    LineReader reader(in, /*max_line=*/4);
+    EXPECT_EQ(reader.next(), "abcd");
+    EXPECT_EQ(reader.next(), "xy");
+    EXPECT_FALSE(reader.next().has_value());
+}
+
+TEST(LineReader, ReadsLineSpanningBufferBoundary) {
+    std::istringstream in("abcdefgh\nij\n");
+    LineReader reader(in, MAX_LINE_BYTES, /*buffer=*/4);
+    EXPECT_EQ(reader.next(), "abcdefgh");
+    EXPECT_EQ(reader.next(), "ij");
+    EXPECT_FALSE(reader.next().has_value());
 }
 
 }

@@ -32,6 +32,7 @@ struct ColumnBuilder {
 struct BatchBuilder {
     std::vector<ColumnBuilder> columns;
     std::size_t n_rows = 0;
+    std::size_t byte_size = 0;
 };
 
 struct RecordBatch {

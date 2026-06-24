@@ -55,6 +55,20 @@ TEST(Convert, AppliesSelectAndRename) {
     EXPECT_EQ(table->schema()->field(1)->name(), "id");
 }
 
+TEST(Convert, FlushesByByteLimitKeepingAllRows) {
+    std::string body;
+    const int rows = 200;
+    for (int i = 0; i < rows; ++i) body += "{\"v\":" + std::to_string(i) + "}\n";
+    auto in = write_file("c_bytes.jsonl", body);
+    auto out = ::testing::TempDir() + "c_bytes.parquet";
+    auto cfg = config_for(in, out);
+    cfg.batch_bytes = 16;  // force a flush almost every row
+    auto stats = convert(cfg);
+    EXPECT_EQ(stats.final_state, PipelineState::DONE);
+    EXPECT_EQ(stats.rows_written, static_cast<std::size_t>(rows));
+    EXPECT_EQ(read_parquet(out)->num_rows(), rows);
+}
+
 TEST(Convert, WritesParquetFromJsonl) {
     auto in = write_file("c_ok.jsonl", "{\"code\":200}\n{\"code\":404}\n{\"code\":500}\n");
     auto out = ::testing::TempDir() + "c_ok.parquet";

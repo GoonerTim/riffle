@@ -124,7 +124,8 @@ std::expected<void, std::string> process(Ctx& ctx, std::string_view line) {
     ++ctx.line_no;
     if (auto ok = ctx.parser.parse(line, ctx.sink); !ok) return on_bad_line(ctx, line, ok.error());
     ++ctx.stats.rows_read;
-    if (ctx.builder.n_rows >= ctx.cfg.batch_rows) return flush(ctx);
+    if (ctx.builder.n_rows >= ctx.cfg.batch_rows || ctx.builder.byte_size >= ctx.cfg.batch_bytes)
+        return flush(ctx);
     return {};
 }
 

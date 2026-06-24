@@ -78,7 +78,7 @@
 apt-get update && apt-get install -y \
     build-essential cmake ninja-build \
     libarrow-dev libparquet-dev libzstd-dev libsnappy-dev \
-    libsimdjson-dev libgtest-dev
+    libgtest-dev
 
 cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j
@@ -158,9 +158,10 @@ python -c "import pyarrow.parquet as pq; print(pq.read_table('sample.parquet').t
 | `EXIT_DATA`             | `int`    | `4`                 | Конвертация завершилась в `ABORTED`                       |
 | `EXIT_OUTPUT`           | `int`    | `5`                 | Ошибка записи выхода (зарезервирован)                     |
 
-Зарезервированы (объявлены, пока не используются): `MAX_BATCH_BYTES`, `DEFAULT_ROW_GROUP_BYTES`,
-`READ_BUFFER_BYTES`, `MAX_LINE_BYTES` — задел под байтовые лимиты батча/строки и тюнинг
-row-group.
+Также используются: `READ_BUFFER_BYTES` (буфер чтения `LineReader`), `MAX_LINE_BYTES` (лимит
+длины строки; превышение → строка усекается и обрабатывается по `OnError`), `MAX_BATCH_BYTES`
+(дефолт `Config.batch_bytes` — байтовый порог сброса батча). Зарезервирован (объявлен, пока не
+используется): `DEFAULT_ROW_GROUP_BYTES` — задел под тюнинг размера row-group.
 
 ## Типы данных
 
@@ -267,11 +268,14 @@ struct Config {
     std::string              output_path;
     OutputFormat             output_format  = OutputFormat::PARQUET;
     InferredSchema           schema_override;  // пустая → инференс
+    Projection               projection;       // --select / --exclude / --rename
     CompressionCodec         compression    = CompressionCodec::ZSTD;
     std::size_t              batch_rows      = DEFAULT_BATCH_ROWS;
+    std::size_t              batch_bytes     = MAX_BATCH_BYTES;
     OnError                  on_error        = OnError::SKIP;
     TypeConflictPolicy       type_conflict   = TypeConflictPolicy::WIDEN;
     bool                     emit_stats      = false;
+    bool                     print_schema    = false;
 };
 ```
 
@@ -378,9 +382,11 @@ public:
 ### Чтение: LineReader
 
 `include/riffle/reader.hpp`. Потоково выдаёт непустые логические строки из `std::istream`,
-толерантен к CRLF. Использует **переиспользуемый внутренний буфер** и возвращает
-`std::optional<std::string_view>` в него — без аллокации на строку. View действителен до
-следующего вызова `next()`.
+толерантен к CRLF. Читает чанками по `READ_BUFFER_BYTES` в **переиспользуемый внутренний
+буфер** и возвращает `std::optional<std::string_view>` в него — без аллокации на строку (view
+действителен до следующего `next()`). Строка длиннее `MAX_LINE_BYTES` **усекается** до лимита
+(остаток физической строки пропускается) — память ограничена даже на патологическом входе без
+переводов строки; усечённая строка обычно не парсится как JSON и обрабатывается по `OnError`.
 
 ```cpp
 std::optional<std::string_view> LineReader::next();
@@ -543,6 +549,7 @@ int main() {
 | `--schema`          | путь к JSON                    | нет          | `schema_override` (см. `parse_schema_json`) |
 | `--compression`     | `none` \| `snappy` \| `zstd`   | `zstd`       | `compression`                       |
 | `--batch-rows`      | целое                          | `65536`      | `batch_rows`                        |
+| `--batch-bytes`     | целое                          | 256 МиБ      | `batch_bytes` (байтовый порог сброса батча) |
 | `--on-error`        | `skip` \| `abort` \| `collect` | `skip`       | `on_error`                          |
 | `--type-conflict`   | `widen` \| `string` \| `error` | `widen`      | `type_conflict`                     |
 | `--select`          | `col,col,...`                  | все          | `projection.select`                 |

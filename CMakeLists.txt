@@ -1,5 +1,5 @@
-cmake_minimum_required(VERSION 3.20)
-project(riffle VERSION 0.1.1 LANGUAGES CXX)
+cmake_minimum_required(VERSION 3.25)
+project(riffle VERSION 0.1.2 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -14,7 +14,22 @@ endif()
 # ---------------------------------------------------------------------------
 find_package(Arrow CONFIG REQUIRED)
 find_package(Parquet CONFIG REQUIRED)
-find_package(simdjson CONFIG REQUIRED)
+
+# simdjson is pinned via FetchContent so the exact header is used everywhere
+# (build and clang-tidy), independent of the distro's packaged version.
+include(FetchContent)
+set(SIMDJSON_TAG "v3.11.0" CACHE STRING "simdjson git tag")
+FetchContent_Declare(
+  simdjson
+  GIT_REPOSITORY https://github.com/simdjson/simdjson.git
+  GIT_TAG ${SIMDJSON_TAG}
+  GIT_SHALLOW TRUE
+)
+FetchContent_MakeAvailable(simdjson)
+# Treat simdjson's headers as system headers so clang-tidy does not analyze them.
+if(TARGET simdjson)
+  set_target_properties(simdjson PROPERTIES SYSTEM TRUE)
+endif()
 
 # ---------------------------------------------------------------------------
 # Core library — sources are added per TDD step.

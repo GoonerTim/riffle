@@ -92,17 +92,16 @@ std::string json_escape(std::string_view text) {
 }
 
 std::string column_json(const ColumnSchema& column) {
-    std::string out = "{\"name\":\"" + json_escape(column.name) + "\",\"type\":\"" +
-                      std::string(to_string(column.type)) +
-                      "\",\"nullable\":" + (column.nullable ? "true" : "false") +
-                      ",\"json_path\":\"" + json_escape(column.json_path) + "\"}";
-    return out;
+    return std::string(R"({"name":")") + json_escape(column.name) + R"(","type":")" +
+           std::string(to_string(column.type)) + R"(","nullable":)" +
+           (column.nullable ? "true" : "false") + R"(,"json_path":")" +
+           json_escape(column.json_path) + R"("})";
 }
 
 }  // namespace
 
 std::string write_schema_json(const InferredSchema& schema) {
-    std::string out = "{\"columns\":[";
+    std::string out = R"({"columns":[)";
     for (std::size_t i = 0; i < schema.columns.size(); ++i) {
         if (i != 0) out += ",";
         out += column_json(schema.columns[i]);
