@@ -23,8 +23,13 @@ tolerated.
 ## Development setup
 
 ```bash
-# Dependencies (Debian/Ubuntu)
-apt-get install -y build-essential cmake ninja-build \
+# Dependencies (Debian/Ubuntu). Arrow/Parquet come from the Apache Arrow APT repo:
+sudo apt-get update
+sudo apt-get install -y -V ca-certificates lsb-release wget
+wget https://apache.jfrog.io/artifactory/arrow/$(lsb_release --id --short | tr 'A-Z' 'a-z')/apache-arrow-apt-source-latest-$(lsb_release --codename --short).deb
+sudo apt-get install -y -V ./apache-arrow-apt-source-latest-$(lsb_release --codename --short).deb
+sudo apt-get update
+sudo apt-get install -y -V build-essential cmake ninja-build \
     libarrow-dev libparquet-dev libzstd-dev libsnappy-dev \
     libsimdjson-dev libgtest-dev
 

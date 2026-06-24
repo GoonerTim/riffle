@@ -104,8 +104,16 @@ bounded by the first row-group flush (streaming Parquet fixes the schema once co
 ### Install
 
 ```bash
-# Debian/Ubuntu system packages
-apt-get update && apt-get install -y \
+# Debian/Ubuntu: Arrow/Parquet come from the Apache Arrow APT repository,
+# not the stock Ubuntu repos.
+sudo apt-get update
+sudo apt-get install -y -V ca-certificates lsb-release wget
+wget https://apache.jfrog.io/artifactory/arrow/$(lsb_release --id --short | tr 'A-Z' 'a-z')/apache-arrow-apt-source-latest-$(lsb_release --codename --short).deb
+sudo apt-get install -y -V ./apache-arrow-apt-source-latest-$(lsb_release --codename --short).deb
+sudo apt-get update
+
+# Build dependencies
+sudo apt-get install -y -V \
     build-essential cmake ninja-build \
     libarrow-dev libparquet-dev libzstd-dev libsnappy-dev \
     libsimdjson-dev libgtest-dev
