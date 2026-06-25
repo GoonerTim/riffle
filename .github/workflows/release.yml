@@ -1,0 +1,111 @@
+name: Release binaries
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  linux:
+    name: Binary (linux-x86_64)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          set -e
+          sudo apt-get update
+          sudo apt-get install -y -V ca-certificates lsb-release wget cmake ninja-build g++
+          wget https://apache.jfrog.io/artifactory/arrow/$(lsb_release --id --short | tr 'A-Z' 'a-z')/apache-arrow-apt-source-latest-$(lsb_release --codename --short).deb
+          sudo apt-get install -y -V ./apache-arrow-apt-source-latest-$(lsb_release --codename --short).deb
+          sudo apt-get update
+          sudo apt-get install -y -V libarrow-dev libparquet-dev libzstd-dev libsnappy-dev
+
+      - name: Build
+        run: |
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DRIFFLE_BUILD_TESTS=OFF
+          cmake --build build --target riffle
+
+      - name: Package
+        run: tar czf riffle-linux-x86_64.tar.gz -C build riffle
+
+      - name: Upload to release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          for i in $(seq 1 12); do
+            gh release upload "${GITHUB_REF_NAME}" riffle-linux-x86_64.tar.gz --clobber && exit 0
+            sleep 15
+          done
+          exit 1
+
+  macos:
+    name: Binary (macos-arm64)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: brew install apache-arrow ninja
+
+      - name: Build
+        run: |
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DRIFFLE_BUILD_TESTS=OFF
+          cmake --build build --target riffle
+
+      - name: Package
+        run: tar czf riffle-macos-arm64.tar.gz -C build riffle
+
+      - name: Upload to release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          for i in $(seq 1 12); do
+            gh release upload "${GITHUB_REF_NAME}" riffle-macos-arm64.tar.gz --clobber && exit 0
+            sleep 15
+          done
+          exit 1
+
+  windows:
+    name: Binary (windows-x86_64)
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: msys2 {0}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: UCRT64
+          update: true
+          install: >-
+            git
+            mingw-w64-ucrt-x86_64-gcc
+            mingw-w64-ucrt-x86_64-cmake
+            mingw-w64-ucrt-x86_64-ninja
+            mingw-w64-ucrt-x86_64-arrow
+
+      - name: Build
+        run: |
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DRIFFLE_BUILD_TESTS=OFF
+          cmake --build build --target riffle
+
+      - name: Package
+        shell: pwsh
+        run: Compress-Archive -Path build/riffle.exe -DestinationPath riffle-windows-x86_64.zip -Force
+
+      - name: Upload to release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          for ($i = 0; $i -lt 12; $i++) {
+            gh release upload "$env:GITHUB_REF_NAME" riffle-windows-x86_64.zip --clobber
+            if ($LASTEXITCODE -eq 0) { exit 0 }
+            Start-Sleep -Seconds 15
+          }
+          exit 1

@@ -1,0 +1,21 @@
+# ninja log v6
+2	100	8040488376262183	simdjson-populate-prefix/src/simdjson-populate-stamp/simdjson-populate-mkdir	976a804da27857bd
+2	100	8040488376262183	D:/Program Files (x86)/projects/riffle/build-notest/_deps/simdjson-subbuild/simdjson-populate-prefix/src/simdjson-populate-stamp/simdjson-populate-mkdir	976a804da27857bd
+101	11964	8040488494911014	simdjson-populate-prefix/src/simdjson-populate-stamp/simdjson-populate-download	bf7bacd4a904f817
+101	11964	8040488494911014	D:/Program Files (x86)/projects/riffle/build-notest/_deps/simdjson-subbuild/simdjson-populate-prefix/src/simdjson-populate-stamp/simdjson-populate-download	bf7bacd4a904f817
+11964	12120	8040488495111216	simdjson-populate-prefix/src/simdjson-populate-stamp/simdjson-populate-update	b30fc8592aa82675
+11964	12120	8040488495111216	D:/Program Files (x86)/projects/riffle/build-notest/_deps/simdjson-subbuild/simdjson-populate-prefix/src/simdjson-populate-stamp/simdjson-populate-update	b30fc8592aa82675
+12121	12219	8040488497428852	simdjson-populate-prefix/src/simdjson-populate-stamp/simdjson-populate-patch	8c7b9695743232ea
+12121	12219	8040488497428852	D:/Program Files (x86)/projects/riffle/build-notest/_deps/simdjson-subbuild/simdjson-populate-prefix/src/simdjson-populate-stamp/simdjson-populate-patch	8c7b9695743232ea
+12219	12318	8040488498414294	simdjson-populate-prefix/src/simdjson-populate-stamp/simdjson-populate-configure	397189c7c99a147f
+12219	12318	8040488498414294	D:/Program Files (x86)/projects/riffle/build-notest/_deps/simdjson-subbuild/simdjson-populate-prefix/src/simdjson-populate-stamp/simdjson-populate-configure	397189c7c99a147f
+12319	12432	8040488499571338	simdjson-populate-prefix/src/simdjson-populate-stamp/simdjson-populate-build	33dccee99f2129ab
+12319	12432	8040488499571338	D:/Program Files (x86)/projects/riffle/build-notest/_deps/simdjson-subbuild/simdjson-populate-prefix/src/simdjson-populate-stamp/simdjson-populate-build	33dccee99f2129ab
+12432	12532	8040488500590329	simdjson-populate-prefix/src/simdjson-populate-stamp/simdjson-populate-install	383e6a26454f19a7
+12432	12532	8040488500590329	D:/Program Files (x86)/projects/riffle/build-notest/_deps/simdjson-subbuild/simdjson-populate-prefix/src/simdjson-populate-stamp/simdjson-populate-install	383e6a26454f19a7
+12532	12636	8040488501616453	simdjson-populate-prefix/src/simdjson-populate-stamp/simdjson-populate-test	d3d26bc8e5586ce2
+12532	12636	8040488501616453	D:/Program Files (x86)/projects/riffle/build-notest/_deps/simdjson-subbuild/simdjson-populate-prefix/src/simdjson-populate-stamp/simdjson-populate-test	d3d26bc8e5586ce2
+12636	12778	8040488503030357	CMakeFiles/simdjson-populate-complete	58cc2e488b1b7532
+12636	12778	8040488503030357	simdjson-populate-prefix/src/simdjson-populate-stamp/simdjson-populate-done	58cc2e488b1b7532
+12636	12778	8040488503030357	D:/Program Files (x86)/projects/riffle/build-notest/_deps/simdjson-subbuild/CMakeFiles/simdjson-populate-complete	58cc2e488b1b7532
+12636	12778	8040488503030357	D:/Program Files (x86)/projects/riffle/build-notest/_deps/simdjson-subbuild/simdjson-populate-prefix/src/simdjson-populate-stamp/simdjson-populate-done	58cc2e488b1b7532

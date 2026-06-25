@@ -58,7 +58,7 @@ def grouped_bar(datasets, tools, data, metric, title, ylabel, fname, annotate):
 def main():
     datasets, tools, data = load()
     grouped_bar(datasets, tools, data, "peak_rss_mb",
-                "Peak memory (lower is better) — Riffle stays flat",
+                "Peak memory (lower is better) — Riffle 1t stays flat with input size",
                 "Peak RSS, MB", "bench_memory.png", lambda v: f"{v:.0f}")
     grouped_bar(datasets, tools, data, "throughput_mb_s",
                 "Throughput (higher is better)",

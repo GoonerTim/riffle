@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.25)
-project(riffle VERSION 0.2.1 LANGUAGES CXX)
+project(riffle VERSION 0.2.2 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -85,8 +85,10 @@ if(RIFFLE_BUILD_PROFILER)
 endif()
 
 # ---------------------------------------------------------------------------
-# Tests
+# Tests (skip with -DRIFFLE_BUILD_TESTS=OFF, e.g. for release binaries)
 # ---------------------------------------------------------------------------
+option(RIFFLE_BUILD_TESTS "Build the test suite" ON)
+if(RIFFLE_BUILD_TESTS)
 enable_testing()
 find_package(GTest CONFIG REQUIRED)
 
@@ -115,3 +117,4 @@ target_link_libraries(riffle_tests
 
 include(GoogleTest)
 gtest_discover_tests(riffle_tests)
+endif()

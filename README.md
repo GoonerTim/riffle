@@ -60,30 +60,35 @@ Converting the same JSON-lines dataset to Parquet, Riffle vs. the common Python 
 
 ![Peak memory comparison](docs/img/bench_memory.png)
 
-Riffle streams in **constant memory**: its peak stays at **~80 MB whether the input is 120 MB
-or 359 MB**. The others load the whole file (or large intermediates): pandas peaks at **4.2 GB
-on a 359 MB input (~12×)**, pyarrow at ~810 MB, duckdb at ~490 MB and growing with input size.
-That flat line is why Riffle converts files **larger than RAM** on a laptop where the others OOM.
+Single-threaded Riffle streams in **constant memory**: its peak stays at **~80 MB whether the
+input is 120 MB or 359 MB**. The others load the whole file (or large intermediates): pandas peaks
+at **4.2 GB on a 359 MB input (~12×)**, pyarrow at ~810 MB, duckdb at ~490 MB and growing with
+input size. That flat line is why single-threaded Riffle converts files **larger than RAM** on a
+laptop where the others OOM. Multi-threaded Riffle (`8t`) trades some of that for speed — peak rises
+to **~180–220 MB** (a few in-flight chunks per worker) — but it is still bounded (it does **not**
+grow with input size) and well under pyarrow/pandas.
 
 ### Throughput — honest picture
 
 ![Throughput comparison](docs/img/bench_throughput.png)
 
 The chart shows Riffle both single-threaded (`1t`) and multi-threaded (`8t`); DuckDB and PyArrow
-also use all cores. Single-threaded Riffle (~95–100 MB/s) is mid-pack — ahead of pandas, behind
-the multi-core tools — but with `--threads 8` it reaches **~360–380 MB/s**, matching or beating
-DuckDB and PyArrow on this hardware while still using a fraction of their memory. Parsing uses the
-simdjson **on-demand** API with `string_view`-backed cells (no per-field allocation), fields go
-**straight into column builders**, and Arrow appends are **batched** per column.
+also use all cores. **Single-threaded** Riffle (~95–100 MB/s) is mid-pack — ahead of pandas, behind
+the multi-core tools — but uses the least memory of anything here (~80 MB). **Multi-threaded**
+(`--threads 8`) Riffle reaches **~360–380 MB/s**, the **fastest** of all tools on this hardware,
+**at the cost of memory** (~180–220 MB instead of ~80 MB — still bounded, still far below
+pyarrow/pandas). So you pick the trade-off: lowest memory single-threaded, or top throughput with a
+modest, bounded memory increase.
 
 ### Scaling with `--threads`
 
 ![Throughput vs threads](docs/img/bench_threads.png)
 
-Single-threaded throughput is mid-pack, but conversion parallelizes across cores: with
-`--threads 8` Riffle reaches **~380 MB/s** on the 120 MB dataset — into DuckDB/PyArrow territory —
-while keeping the same flat, bounded memory and **byte-identical, deterministic output**
-(workers parse+build chunks; a single writer emits batches in input order).
+Throughput scales with cores: from ~95 MB/s at 1 thread to **~380 MB/s at 8** on the 120 MB
+dataset. Output is **byte-identical and deterministic** regardless of thread count (workers
+parse+build chunks; a single writer emits batches in input order). The cost is memory: each extra
+in-flight chunk adds a bounded amount, so peak RSS grows modestly with `--threads` but never with
+input size.
 
 ### Where Riffle wins / where it doesn't
 
@@ -111,6 +116,12 @@ Known limitation: with `--threads > 1` the schema is fixed from the inference sa
 cross-batch widening).
 
 ## Quick start
+
+CI builds and tests on **Linux, macOS, and Windows** (every push and PR). Tagged releases attach
+**prebuilt binaries** for each platform (`riffle-linux-x86_64.tar.gz`, `riffle-macos-arm64.tar.gz`,
+`riffle-windows-x86_64.zip`) on the [Releases](https://github.com/GoonerTim/riffle/releases) page —
+these are dynamically linked against Arrow, so install the Arrow runtime (below) to run them, or
+build from source.
 
 ### Install
 
