@@ -13,14 +13,19 @@ between "grep the log by hand" and "spin up Spark/pandas/DuckDB for one conversi
 
 ## Why Riffle
 
-- **Constant memory** — one-pass streaming with bounded batches; RAM usage is **O(1)** in the
-  size of the input, not the size of the file. This is the headline feature: convert files
-  **larger than RAM**.
-- **Fast single-core** — SIMD JSON parsing ([simdjson](https://github.com/simdjson/simdjson))
-  on-demand and batched columnar appends sustain **~115 MB/s** of input on one core.
-- **Zero-config** — the column schema is **inferred** from the data, with an optional explicit
-  `--schema` override when inference guesses wrong.
-- **One static binary** — no Python/JVM runtime. Drops cleanly into pipelines and containers.
+- **Bounded memory** — one-pass streaming with bounded batches; RAM usage does **not** grow with
+  the size of the file. This is the headline feature: convert files **larger than RAM**.
+  Single-threaded peak is ~80 MB flat; `--threads` adds a small, bounded amount per worker.
+- **Scales with cores** — SIMD JSON parsing ([simdjson](https://github.com/simdjson/simdjson)) and
+  batched columnar appends sustain ~115 MB/s on one core and **~410–550 MB/s with `--threads 8`** —
+  matching or beating DuckDB/PyArrow on the bench machine — with **deterministic, byte-identical**
+  output regardless of thread count.
+- **Zero-config schema** — the column schema is **inferred** (including ISO-8601 timestamps), with
+  an optional `--schema` override and column projection (`--select`/`--exclude`/`--rename`).
+- **Handles real inputs** — transparent **gzip/zstd** decompression by extension, and nested JSON
+  either flattened to dotted columns or mapped to **native Parquet struct/list** (`--nested native`).
+- **One static binary** — no Python/JVM runtime; usable as a CLI or a C++ library. Builds and is
+  tested on Linux, macOS and Windows.
 
 See the full design in [`docs/riffle.md`](docs/riffle.md).
 
@@ -45,8 +50,8 @@ See the full design in [`docs/riffle.md`](docs/riffle.md).
   inferred schema (or a pinned `--schema`).
 - **Ad-hoc conversion** — turn a huge one-off `.jsonl` dump into Parquet on a laptop where
   pandas/pyarrow would run out of memory.
-- **Streaming from pipes** — `gunzip -c big.jsonl.gz | riffle - -o out.parquet`, converting on
-  the fly without a temporary file.
+- **Compressed logs** — point Riffle straight at `big.jsonl.gz`/`big.jsonl.zst` (decompressed
+  transparently), or stream from a pipe with `-` as the input.
 - **As a library** — embed `riffle::convert` in a C++ service to emit Parquet from JSON without
   pulling in a heavy data framework.
 
@@ -62,10 +67,10 @@ Converting the same JSON-lines dataset to Parquet, Riffle vs. the common Python 
 
 Single-threaded Riffle streams in **constant memory**: its peak stays at **~80 MB whether the
 input is 120 MB or 359 MB**. The others load the whole file (or large intermediates): pandas peaks
-at **4.2 GB on a 359 MB input (~12×)**, pyarrow at ~810 MB, duckdb at ~490 MB and growing with
+at **4.2 GB on a 359 MB input (~12×)**, pyarrow at ~830 MB, duckdb at ~500 MB and growing with
 input size. That flat line is why single-threaded Riffle converts files **larger than RAM** on a
 laptop where the others OOM. Multi-threaded Riffle (`8t`) trades some of that for speed — peak rises
-to **~180–220 MB** (a few in-flight chunks per worker) — but it is still bounded (it does **not**
+to **~190–250 MB** (a few in-flight chunks per worker) — but it is still bounded (it does **not**
 grow with input size) and well under pyarrow/pandas.
 
 ### Throughput — honest picture
@@ -73,19 +78,20 @@ grow with input size) and well under pyarrow/pandas.
 ![Throughput comparison](docs/img/bench_throughput.png)
 
 The chart shows Riffle both single-threaded (`1t`) and multi-threaded (`8t`); DuckDB and PyArrow
-also use all cores. **Single-threaded** Riffle (~95–100 MB/s) is mid-pack — ahead of pandas, behind
+also use all cores. **Single-threaded** Riffle (~110–120 MB/s) is mid-pack — ahead of pandas, behind
 the multi-core tools — but uses the least memory of anything here (~80 MB). **Multi-threaded**
-(`--threads 8`) Riffle reaches **~360–380 MB/s**, the **fastest** of all tools on this hardware,
-**at the cost of memory** (~180–220 MB instead of ~80 MB — still bounded, still far below
-pyarrow/pandas). So you pick the trade-off: lowest memory single-threaded, or top throughput with a
-modest, bounded memory increase.
+(`--threads 8`) Riffle reaches **~410–550 MB/s**: the fastest tool on the 1M set (407 vs DuckDB's
+348 and PyArrow's 268 MB/s) and neck-and-neck with DuckDB on the 3M set (552 vs 598), well ahead of
+PyArrow either way — **at the cost of memory** (~190–250 MB instead of ~80 MB, still bounded and far
+below pyarrow/pandas). So you pick the trade-off: lowest memory single-threaded, or top throughput
+with a modest, bounded memory increase.
 
 ### Scaling with `--threads`
 
 ![Throughput vs threads](docs/img/bench_threads.png)
 
-Throughput scales with cores: from ~95 MB/s at 1 thread to **~380 MB/s at 8** on the 120 MB
-dataset. Output is **byte-identical and deterministic** regardless of thread count (workers
+Throughput scales with cores: **~115 → 200 → 318 → 384 MB/s** at 1 → 2 → 4 → 8 threads on the
+120 MB dataset. Output is **byte-identical and deterministic** regardless of thread count (workers
 parse+build chunks; a single writer emits batches in input order). The cost is memory: each extra
 in-flight chunk adds a bounded amount, so peak RSS grows modestly with `--threads` but never with
 input size.
@@ -96,8 +102,8 @@ input size.
 | ---------------------------------- | --------------------- | ------ | ------- | ------ |
 | Peak memory, flat with input size  | ✅ ~80 MB, constant    | ⚠️ grows | ❌ grows | ❌ huge |
 | Converts files larger than RAM     | ✅                     | ⚠️      | ❌       | ❌      |
-| Raw throughput (1 thread)          | ⚠️ ~95 MB/s            | ✅      | ✅       | ❌      |
-| Raw throughput (`--threads 8`)     | ✅ ~370 MB/s           | ✅      | ✅       | ❌      |
+| Raw throughput (1 thread)          | ⚠️ ~115 MB/s           | ✅      | ✅       | ❌      |
+| Raw throughput (`--threads 8`)     | ✅ ~410–550 MB/s       | ✅      | ✅       | ❌      |
 | Single static binary, no runtime   | ✅                     | ❌ (lib) | ❌ (lib) | ❌ (lib) |
 
 **Bottom line:** if you need raw speed on data that fits in memory, DuckDB is excellent. If you
@@ -145,6 +151,20 @@ cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j
 ```
 
+On **macOS** (Homebrew) and **Windows** (MSYS2 UCRT64) the dependencies come from the platform
+package manager; the build command is identical:
+
+```bash
+# macOS
+brew install apache-arrow cmake ninja googletest
+
+# Windows — in an MSYS2 UCRT64 shell
+pacman -S --needed mingw-w64-ucrt-x86_64-{gcc,cmake,ninja,arrow,gtest}
+```
+
+To build just the CLI without the test suite (no GoogleTest needed), add
+`-DRIFFLE_BUILD_TESTS=OFF`.
+
 ### Use
 
 ```bash
@@ -173,9 +193,12 @@ riffle events.jsonl -o out.parquet --on-error collect --stats
 #include <riffle.hpp>
 
 int main() {
-    riffle::Config cfg = riffle::make_Config(
-        /*inputs=*/{"events.jsonl"},
-        /*output_path=*/"events.parquet");
+    // make_Config validates invariants and throws std::invalid_argument on bad input.
+    riffle::Config cfg = riffle::make_Config({
+        .inputs = {"events.jsonl"},
+        .output_path = "events.parquet",
+        .threads = 8,
+    });
     riffle::ConvertStats stats = riffle::convert(cfg);
     return stats.final_state == riffle::PipelineState::DONE ? 0 : 1;
 }
@@ -215,8 +238,9 @@ just fmt        # format sources (clang-format)
 just lint       # static analysis (clang-tidy)
 ```
 
-CI runs build, tests, format and lint checks on every push and pull request via GitHub
-Actions (see [`.github/workflows/ci.yml`](.github/workflows/ci.yml)).
+CI builds and tests on **Linux, macOS and Windows** and runs format + clang-tidy checks on every
+push and pull request; tagged releases build per-platform binaries (see
+[`.github/workflows/`](.github/workflows/)).
 
 ## Contributing
 

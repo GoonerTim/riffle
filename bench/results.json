@@ -1,82 +1,82 @@
 [
   {
     "tool": "riffle (1t)",
-    "seconds": 1.248,
-    "seconds_best": 1.21,
-    "throughput_mb_s": 98.8,
-    "peak_rss_mb": 75.2,
+    "seconds": 1.068,
+    "seconds_best": 1.062,
+    "throughput_mb_s": 112.5,
+    "peak_rss_mb": 74.4,
     "dataset": "1M rows (120 MB)"
   },
   {
     "tool": "riffle (8t)",
-    "seconds": 0.325,
-    "seconds_best": 0.312,
-    "throughput_mb_s": 383.0,
-    "peak_rss_mb": 182.4,
+    "seconds": 0.306,
+    "seconds_best": 0.294,
+    "throughput_mb_s": 406.8,
+    "peak_rss_mb": 189.1,
     "dataset": "1M rows (120 MB)"
   },
   {
     "tool": "duckdb",
-    "seconds": 0.424,
-    "seconds_best": 0.372,
-    "throughput_mb_s": 321.1,
-    "peak_rss_mb": 217.9,
+    "seconds": 0.35,
+    "seconds_best": 0.344,
+    "throughput_mb_s": 347.8,
+    "peak_rss_mb": 214.7,
     "dataset": "1M rows (120 MB)"
   },
   {
     "tool": "pyarrow",
-    "seconds": 0.613,
-    "seconds_best": 0.61,
-    "throughput_mb_s": 196.1,
-    "peak_rss_mb": 381.6,
+    "seconds": 0.453,
+    "seconds_best": 0.447,
+    "throughput_mb_s": 267.7,
+    "peak_rss_mb": 378.9,
     "dataset": "1M rows (120 MB)"
   },
   {
     "tool": "pandas",
-    "seconds": 4.778,
-    "seconds_best": 4.65,
-    "throughput_mb_s": 25.7,
-    "peak_rss_mb": 1444.1,
+    "seconds": 3.461,
+    "seconds_best": 3.407,
+    "throughput_mb_s": 35.1,
+    "peak_rss_mb": 1444.2,
     "dataset": "1M rows (120 MB)"
   },
   {
     "tool": "riffle (1t)",
-    "seconds": 3.982,
-    "seconds_best": 3.71,
-    "throughput_mb_s": 96.7,
-    "peak_rss_mb": 79.9,
+    "seconds": 3.059,
+    "seconds_best": 2.993,
+    "throughput_mb_s": 119.8,
+    "peak_rss_mb": 79.8,
     "dataset": "3M rows (359 MB)"
   },
   {
     "tool": "riffle (8t)",
-    "seconds": 1.037,
-    "seconds_best": 0.988,
-    "throughput_mb_s": 362.8,
-    "peak_rss_mb": 222.7,
+    "seconds": 0.658,
+    "seconds_best": 0.649,
+    "throughput_mb_s": 552.3,
+    "peak_rss_mb": 253.3,
     "dataset": "3M rows (359 MB)"
   },
   {
     "tool": "duckdb",
-    "seconds": 1.057,
-    "seconds_best": 1.022,
-    "throughput_mb_s": 351.0,
-    "peak_rss_mb": 475.5,
+    "seconds": 0.65,
+    "seconds_best": 0.599,
+    "throughput_mb_s": 598.3,
+    "peak_rss_mb": 502.5,
     "dataset": "3M rows (359 MB)"
   },
   {
     "tool": "pyarrow",
-    "seconds": 1.95,
-    "seconds_best": 1.848,
-    "throughput_mb_s": 194.0,
-    "peak_rss_mb": 783.6,
+    "seconds": 0.935,
+    "seconds_best": 0.907,
+    "throughput_mb_s": 395.5,
+    "peak_rss_mb": 826.4,
     "dataset": "3M rows (359 MB)"
   },
   {
     "tool": "pandas",
-    "seconds": 16.473,
-    "seconds_best": 15.877,
-    "throughput_mb_s": 22.6,
-    "peak_rss_mb": 4185.2,
+    "seconds": 11.137,
+    "seconds_best": 9.982,
+    "throughput_mb_s": 35.9,
+    "peak_rss_mb": 4185.5,
     "dataset": "3M rows (359 MB)"
   }
 ]

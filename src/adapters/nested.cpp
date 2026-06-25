@@ -161,9 +161,8 @@ std::expected<void, std::string> append_bool(arrow::ArrayBuilder* builder, dom::
 
 std::expected<void, std::string> append_string(arrow::ArrayBuilder* builder, dom::element value) {
     auto* typed = static_cast<arrow::StringBuilder*>(builder);
-    if (value.is_string()) {
-        std::string_view text;
-        (void)value.get(text);
+    std::string_view text;
+    if (value.get(text) == simdjson::SUCCESS) {
         return check(typed->Append(text.data(), static_cast<int>(text.size())));
     }
     std::ostringstream rendered;

@@ -1,6 +1,5 @@
 #include "riffle/convert.hpp"
 
-#include <atomic>
 #include <chrono>
 #include <condition_variable>
 #include <map>
@@ -8,7 +7,6 @@
 #include <mutex>
 #include <optional>
 #include <queue>
-#include <semaphore>
 #include <string>
 #include <string_view>
 #include <thread>
@@ -276,10 +274,12 @@ ChunkResult process_chunk(const Config& cfg, const InferredSchema& schema, const
 
 // Parse+build chunks on worker threads; a single writer drains results in
 // sequence order so the output is deterministic and memory stays bounded.
+// All shared state lives under one mutex with one condition variable, so every
+// predicate reads consistent state and no wakeup can be lost.
 class ParallelExecutor {
 public:
     ParallelExecutor(const Config& cfg, const InferredSchema& schema)
-        : cfg_(cfg), schema_(schema), slots_(static_cast<std::ptrdiff_t>(2 * cfg.threads + 2)) {}
+        : cfg_(cfg), schema_(schema), max_in_flight_(2 * cfg.threads + 2) {}
 
     ConvertStats run(const std::vector<std::string>& sample, ChainedLines& lines) {
         std::vector<std::thread> workers;
@@ -294,61 +294,64 @@ public:
     }
 
 private:
-    void emit(Chunk&& chunk) {
-        slots_.acquire();
-        {
-            std::lock_guard lock(in_mtx_);
-            in_queue_.push(std::move(chunk));
-        }
-        in_cv_.notify_one();
-    }
-
-    void produce(const std::vector<std::string>& sample, ChainedLines& lines) {
-        std::size_t seq = 0;
-        std::size_t line_no = 0;
-        Chunk cur{seq, line_no, {}};
-        auto add = [&](std::string&& line) {
-            cur.lines.push_back(std::move(line));
-            ++line_no;
-            if (cur.lines.size() >= cfg_.batch_rows) {
-                emit(std::move(cur));
-                cur = Chunk{++seq, line_no, {}};
-            }
-        };
-        for (const auto& line : sample) {
-            if (aborted_.load()) break;
-            add(std::string(line));
-        }
-        for (auto line = lines.next(); line && !aborted_.load(); line = lines.next())
-            add(std::string(*line));
-        if (!cur.lines.empty()) {
-            emit(std::move(cur));
-            ++seq;
-        }
-        total_.store(seq);
-        input_done_.store(true);
-        in_cv_.notify_all();
-        out_cv_.notify_all();
-    }
-
-    bool pop_chunk(Chunk& out) {
-        std::unique_lock lock(in_mtx_);
-        in_cv_.wait(lock, [this] { return !in_queue_.empty() || input_done_.load(); });
-        if (in_queue_.empty()) return false;
-        out = std::move(in_queue_.front());
-        in_queue_.pop();
+    bool push_chunk(std::size_t seq, std::size_t first_line, std::vector<std::string>&& lines) {
+        std::unique_lock lock(mtx_);
+        cv_.wait(lock, [&] { return in_flight_ < max_in_flight_ || aborted_; });
+        if (aborted_) return false;
+        in_queue_.push(Chunk{seq, first_line, std::move(lines)});
+        ++in_flight_;
+        lock.unlock();
+        cv_.notify_all();
         return true;
     }
 
+    void produce(const std::vector<std::string>& sample, ChainedLines& lines) {
+        std::size_t produced = 0;
+        std::size_t line_no = 0;
+        std::vector<std::string> buf;
+        auto feed = [&](std::string&& line) {
+            buf.push_back(std::move(line));
+            ++line_no;
+            if (buf.size() < cfg_.batch_rows) return true;
+            auto moved = std::move(buf);
+            buf.clear();
+            return push_chunk(produced++, line_no - moved.size(), std::move(moved));
+        };
+        bool ok = true;
+        for (const auto& line : sample)
+            if (!feed(std::string(line))) {
+                ok = false;
+                break;
+            }
+        if (ok)
+            for (auto line = lines.next(); line; line = lines.next())
+                if (!feed(std::string(*line))) break;
+        if (ok && !buf.empty()) push_chunk(produced++, line_no - buf.size(), std::move(buf));
+        std::unique_lock lock(mtx_);
+        total_ = produced;
+        input_done_ = true;
+        lock.unlock();
+        cv_.notify_all();
+    }
+
     void worker_loop() {
-        Chunk chunk;
-        while (pop_chunk(chunk)) {
-            ChunkResult res = aborted_.load() ? ChunkResult{} : process_chunk(cfg_, schema_, chunk);
+        while (true) {
+            Chunk chunk;
+            bool aborted = false;
             {
-                std::lock_guard lock(out_mtx_);
+                std::unique_lock lock(mtx_);
+                cv_.wait(lock, [&] { return !in_queue_.empty() || input_done_; });
+                if (in_queue_.empty()) return;
+                chunk = std::move(in_queue_.front());
+                in_queue_.pop();
+                aborted = aborted_;
+            }
+            ChunkResult res = aborted ? ChunkResult{} : process_chunk(cfg_, schema_, chunk);
+            {
+                std::lock_guard lock(mtx_);
                 results_.emplace(chunk.seq, std::move(res));
             }
-            out_cv_.notify_one();
+            cv_.notify_all();
         }
     }
 
@@ -360,11 +363,16 @@ private:
         return {};
     }
 
+    void abort() {
+        std::lock_guard lock(mtx_);
+        aborted_ = true;
+    }
+
     void consume(ChunkResult& res, std::expected<void, std::string>& result) {
-        if (aborted_.load() || !result) return;
+        if (!result) return;
         if (res.fatal) {
             result = std::unexpected("aborted");
-            aborted_.store(true);
+            abort();
             return;
         }
         stats_.rows_read += res.rows_read;
@@ -373,32 +381,34 @@ private:
         if (!res.batch || res.batch->n_rows == 0) return;
         if (auto ok = ensure_writer(); !ok) {
             result = ok;
-            aborted_.store(true);
+            abort();
             return;
         }
         stats_.rows_written += res.batch->n_rows;
         if (auto ok = writer_->write(*res.batch); !ok) {
             result = ok;
-            aborted_.store(true);
+            abort();
         }
     }
 
-    bool drained(std::size_t expected) const {
-        return input_done_.load() && expected >= total_.load() && !results_.contains(expected);
+    bool take_result(std::size_t expected, ChunkResult& out) {
+        std::unique_lock lock(mtx_);
+        cv_.wait(lock, [&] {
+            return results_.contains(expected) || (input_done_ && expected >= total_);
+        });
+        if (!results_.contains(expected)) return false;
+        out = std::move(results_[expected]);
+        results_.erase(expected);
+        --in_flight_;
+        lock.unlock();
+        cv_.notify_all();
+        return true;
     }
 
     void write_loop() {
         std::expected<void, std::string> result;
-        for (std::size_t expected = 0;; ++expected) {
-            std::unique_lock lock(out_mtx_);
-            out_cv_.wait(lock, [&] { return results_.contains(expected) || drained(expected); });
-            if (!results_.contains(expected)) break;
-            ChunkResult res = std::move(results_[expected]);
-            results_.erase(expected);
-            lock.unlock();
-            consume(res, result);
-            slots_.release();
-        }
+        ChunkResult res;
+        for (std::size_t expected = 0; take_result(expected, res); ++expected) consume(res, result);
         if (result) {
             if (auto ok = ensure_writer(); ok)
                 result = writer_->finish();
@@ -410,16 +420,15 @@ private:
 
     const Config& cfg_;
     const InferredSchema& schema_;
-    std::counting_semaphore<> slots_;
-    std::mutex in_mtx_;
-    std::condition_variable in_cv_;
+    const std::size_t max_in_flight_;
+    std::mutex mtx_;
+    std::condition_variable cv_;
     std::queue<Chunk> in_queue_;
-    std::atomic<bool> input_done_{false};
-    std::atomic<std::size_t> total_{0};
-    std::mutex out_mtx_;
-    std::condition_variable out_cv_;
     std::map<std::size_t, ChunkResult> results_;
-    std::atomic<bool> aborted_{false};
+    std::size_t in_flight_ = 0;
+    std::size_t total_ = 0;
+    bool input_done_ = false;
+    bool aborted_ = false;
     std::unique_ptr<Writer> writer_;
     ConvertStats stats_ = make_ConvertStats();
 };

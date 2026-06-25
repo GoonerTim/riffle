@@ -2,6 +2,7 @@
 
 #include <arrow/api.h>
 
+#include <algorithm>
 #include <array>
 #include <cstdint>
 #include <string>
@@ -192,6 +193,18 @@ void reset(ColumnBuilder& column) {
     column.null_count = 0;
 }
 
+// Drop any over-hang left by a row that failed mid-append, so every column has
+// exactly n committed rows before the arrays are built.
+void clamp_rows(ColumnBuilder& column, std::size_t n) {
+    if (column.valid.size() <= n) return;
+    column.valid.resize(n);
+    if (column.ints.size() > n) column.ints.resize(n);
+    if (column.doubles.size() > n) column.doubles.resize(n);
+    if (column.strings.size() > n) column.strings.resize(n);
+    column.null_count =
+        static_cast<std::size_t>(std::count(column.valid.begin(), column.valid.end(), 0));
+}
+
 void widen_to_double(ColumnBuilder& column) {
     for (auto v : column.ints) column.doubles.push_back(static_cast<double>(v));
     column.ints.clear();
@@ -298,6 +311,7 @@ std::expected<RecordBatch, std::string> build_batch(BatchBuilder& builder) {
     std::vector<std::shared_ptr<arrow::Array>> arrays;
     arrow::FieldVector fields;
     for (auto& column : builder.columns) {
+        clamp_rows(column, builder.n_rows);
         auto array = finish_array(column);
         if (!array) return std::unexpected(array.error());
         arrays.push_back(*array);
