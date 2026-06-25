@@ -1,0 +1,44 @@
+name: debug-win
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  dbg:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: msys2 {0}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: UCRT64
+          update: true
+          install: >-
+            git
+            mingw-w64-ucrt-x86_64-gcc
+            mingw-w64-ucrt-x86_64-cmake
+            mingw-w64-ucrt-x86_64-ninja
+            mingw-w64-ucrt-x86_64-arrow
+            mingw-w64-ucrt-x86_64-gtest
+            mingw-w64-ucrt-x86_64-gdb
+      - name: Build
+        run: |
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+          cmake --build build --target riffle_tests
+      - name: Reproduce under gdb
+        run: |
+          for i in $(seq 1 80); do
+            gdb -batch -ex run -ex "thread apply all bt" \
+              --args ./build/riffle_tests.exe \
+              --gtest_filter='Convert.MultiThreadedSkipsMalformedLines' > g.txt 2>&1
+            if grep -qiE "SIGSEGV|Segmentation" g.txt; then
+              echo "=== CRASH on attempt $i ==="
+              cat g.txt
+              exit 0
+            fi
+          done
+          echo "no crash in 80 attempts"
+          exit 1
