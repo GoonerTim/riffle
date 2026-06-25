@@ -1,82 +1,114 @@
 [
   {
-    "tool": "riffle (1t)",
-    "seconds": 1.068,
-    "seconds_best": 1.062,
-    "throughput_mb_s": 112.5,
-    "peak_rss_mb": 74.4,
-    "dataset": "1M rows (120 MB)"
-  },
-  {
-    "tool": "riffle (8t)",
-    "seconds": 0.306,
-    "seconds_best": 0.294,
-    "throughput_mb_s": 406.8,
-    "peak_rss_mb": 189.1,
-    "dataset": "1M rows (120 MB)"
+    "tool": "riffle",
+    "mode": "single",
+    "dataset": "1M rows (120 MB)",
+    "throughput_mb_s": 115.7,
+    "peak_rss_mb": 74.6
   },
   {
     "tool": "duckdb",
-    "seconds": 0.35,
-    "seconds_best": 0.344,
-    "throughput_mb_s": 347.8,
-    "peak_rss_mb": 214.7,
-    "dataset": "1M rows (120 MB)"
+    "mode": "single",
+    "dataset": "1M rows (120 MB)",
+    "throughput_mb_s": 186.7,
+    "peak_rss_mb": 86.5
   },
   {
     "tool": "pyarrow",
-    "seconds": 0.453,
-    "seconds_best": 0.447,
-    "throughput_mb_s": 267.7,
-    "peak_rss_mb": 378.9,
-    "dataset": "1M rows (120 MB)"
+    "mode": "single",
+    "dataset": "1M rows (120 MB)",
+    "throughput_mb_s": 113.0,
+    "peak_rss_mb": 341.1
   },
   {
     "tool": "pandas",
-    "seconds": 3.461,
-    "seconds_best": 3.407,
-    "throughput_mb_s": 35.1,
-    "peak_rss_mb": 1444.2,
-    "dataset": "1M rows (120 MB)"
+    "mode": "single",
+    "dataset": "1M rows (120 MB)",
+    "throughput_mb_s": 35.7,
+    "peak_rss_mb": 1441.6
   },
   {
-    "tool": "riffle (1t)",
-    "seconds": 3.059,
-    "seconds_best": 2.993,
-    "throughput_mb_s": 119.8,
-    "peak_rss_mb": 79.8,
-    "dataset": "3M rows (359 MB)"
-  },
-  {
-    "tool": "riffle (8t)",
-    "seconds": 0.658,
-    "seconds_best": 0.649,
-    "throughput_mb_s": 552.3,
-    "peak_rss_mb": 253.3,
-    "dataset": "3M rows (359 MB)"
+    "tool": "riffle",
+    "mode": "multi",
+    "dataset": "1M rows (120 MB)",
+    "throughput_mb_s": 386.1,
+    "peak_rss_mb": 180.9
   },
   {
     "tool": "duckdb",
-    "seconds": 0.65,
-    "seconds_best": 0.599,
-    "throughput_mb_s": 598.3,
-    "peak_rss_mb": 502.5,
-    "dataset": "3M rows (359 MB)"
+    "mode": "multi",
+    "dataset": "1M rows (120 MB)",
+    "throughput_mb_s": 340.1,
+    "peak_rss_mb": 213.3
   },
   {
     "tool": "pyarrow",
-    "seconds": 0.935,
-    "seconds_best": 0.907,
-    "throughput_mb_s": 395.5,
-    "peak_rss_mb": 826.4,
-    "dataset": "3M rows (359 MB)"
+    "mode": "multi",
+    "dataset": "1M rows (120 MB)",
+    "throughput_mb_s": 251.0,
+    "peak_rss_mb": 387.9
   },
   {
     "tool": "pandas",
-    "seconds": 11.137,
-    "seconds_best": 9.982,
-    "throughput_mb_s": 35.9,
-    "peak_rss_mb": 4185.5,
-    "dataset": "3M rows (359 MB)"
+    "mode": "multi",
+    "dataset": "1M rows (120 MB)",
+    "throughput_mb_s": 34.0,
+    "peak_rss_mb": 1441.1
+  },
+  {
+    "tool": "riffle",
+    "mode": "single",
+    "dataset": "3M rows (359 MB)",
+    "throughput_mb_s": 119.1,
+    "peak_rss_mb": 79.3
+  },
+  {
+    "tool": "duckdb",
+    "mode": "single",
+    "dataset": "3M rows (359 MB)",
+    "throughput_mb_s": 226.7,
+    "peak_rss_mb": 86.8
+  },
+  {
+    "tool": "pyarrow",
+    "mode": "single",
+    "dataset": "3M rows (359 MB)",
+    "throughput_mb_s": 127.3,
+    "peak_rss_mb": 720.6
+  },
+  {
+    "tool": "pandas",
+    "mode": "single",
+    "dataset": "3M rows (359 MB)",
+    "throughput_mb_s": 39.1,
+    "peak_rss_mb": 4185.2
+  },
+  {
+    "tool": "riffle",
+    "mode": "multi",
+    "dataset": "3M rows (359 MB)",
+    "throughput_mb_s": 547.2,
+    "peak_rss_mb": 244.3
+  },
+  {
+    "tool": "duckdb",
+    "mode": "multi",
+    "dataset": "3M rows (359 MB)",
+    "throughput_mb_s": 569.1,
+    "peak_rss_mb": 493.6
+  },
+  {
+    "tool": "pyarrow",
+    "mode": "multi",
+    "dataset": "3M rows (359 MB)",
+    "throughput_mb_s": 397.0,
+    "peak_rss_mb": 813.8
+  },
+  {
+    "tool": "pandas",
+    "mode": "multi",
+    "dataset": "3M rows (359 MB)",
+    "throughput_mb_s": 40.0,
+    "peak_rss_mb": 4183.3
   }
 ]

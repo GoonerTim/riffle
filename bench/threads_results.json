@@ -1,22 +1,22 @@
 [
   {
     "threads": 1,
-    "seconds": 1.037,
-    "throughput_mb_s": 115.2
+    "seconds": 1.024,
+    "throughput_mb_s": 116.7
   },
   {
     "threads": 2,
-    "seconds": 0.598,
-    "throughput_mb_s": 199.9
+    "seconds": 0.583,
+    "throughput_mb_s": 205.2
   },
   {
     "threads": 4,
-    "seconds": 0.376,
-    "throughput_mb_s": 317.7
+    "seconds": 0.388,
+    "throughput_mb_s": 307.9
   },
   {
     "threads": 8,
-    "seconds": 0.311,
-    "throughput_mb_s": 384.2
+    "seconds": 0.324,
+    "throughput_mb_s": 368.7
   }
 ]

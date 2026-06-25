@@ -57,58 +57,61 @@ See the full design in [`docs/riffle.md`](docs/riffle.md).
 
 ## Benchmarks
 
-Converting the same JSON-lines dataset to Parquet, Riffle vs. the common Python one-liners
-(`duckdb`, `pyarrow.json`, `pandas`). Measured on the development machine; reproduce with
-`just bench` (each tool run as a subprocess 3×, best wall-time, peak RSS polled via psutil).
+Riffle vs. the common Python one-liners (`duckdb`, `pyarrow.json`, `pandas`), converting the same
+JSON-lines dataset to Parquet. Every tool is measured **twice** — **single-threaded** (one core
+each) and **multi-threaded** (all cores) — for a like-for-like comparison; reproduce with
+`just bench` (each tool 3×, best wall-time, peak RSS polled via psutil). DuckDB is pinned with
+`SET threads`, PyArrow via `ReadOptions(use_threads)`, Riffle via `--threads`; pandas has no
+parallel JSON reader, so it appears single-threaded in both.
 
-### Peak memory — the reason Riffle exists
+### Single-threaded — one core each
 
-![Peak memory comparison](docs/img/bench_memory.png)
+![Throughput, single-threaded](docs/img/bench_throughput_single.png)
+![Peak memory, single-threaded](docs/img/bench_memory_single.png)
 
-Single-threaded Riffle streams in **constant memory**: its peak stays at **~80 MB whether the
-input is 120 MB or 359 MB**. The others load the whole file (or large intermediates): pandas peaks
-at **4.2 GB on a 359 MB input (~12×)**, pyarrow at ~830 MB, duckdb at ~500 MB and growing with
-input size. That flat line is why single-threaded Riffle converts files **larger than RAM** on a
-laptop where the others OOM. Multi-threaded Riffle (`8t`) trades some of that for speed — peak rises
-to **~190–250 MB** (a few in-flight chunks per worker) — but it is still bounded (it does **not**
-grow with input size) and well under pyarrow/pandas.
+Per core, DuckDB leads on speed (~190–230 MB/s); Riffle (~115–120 MB/s) is on par with PyArrow.
+Riffle's edge here is **memory**: ~75–80 MB regardless of input, while PyArrow balloons to
+340 MB / 720 MB and pandas to 1.4 GB / 4.2 GB (DuckDB is also lean, ~87 MB).
 
-### Throughput — honest picture
+| Tool (1 core) | Throughput 1M | Throughput 3M | Peak mem 1M | Peak mem 3M |
+| ------------- | ------------- | ------------- | ----------- | ----------- |
+| **riffle**    | 116 MB/s      | 119 MB/s      | **75 MB**   | **79 MB**   |
+| duckdb        | **187 MB/s**  | **227 MB/s**  | 87 MB       | 87 MB       |
+| pyarrow       | 113 MB/s      | 127 MB/s      | 341 MB      | 721 MB      |
+| pandas        | 36 MB/s       | 39 MB/s       | 1442 MB     | 4185 MB     |
 
-![Throughput comparison](docs/img/bench_throughput.png)
+### Multi-threaded — all cores
 
-The chart shows Riffle both single-threaded (`1t`) and multi-threaded (`8t`); DuckDB and PyArrow
-also use all cores. **Single-threaded** Riffle (~110–120 MB/s) is mid-pack — ahead of pandas, behind
-the multi-core tools — but uses the least memory of anything here (~80 MB). **Multi-threaded**
-(`--threads 8`) Riffle reaches **~410–550 MB/s**: the fastest tool on the 1M set (407 vs DuckDB's
-348 and PyArrow's 268 MB/s) and neck-and-neck with DuckDB on the 3M set (552 vs 598), well ahead of
-PyArrow either way — **at the cost of memory** (~190–250 MB instead of ~80 MB, still bounded and far
-below pyarrow/pandas). So you pick the trade-off: lowest memory single-threaded, or top throughput
-with a modest, bounded memory increase.
+![Throughput, multi-threaded](docs/img/bench_throughput_multi.png)
+![Peak memory, multi-threaded](docs/img/bench_memory_multi.png)
+
+With all cores Riffle (`--threads 8`) is **the fastest on the 1M set** (386 vs DuckDB 340,
+PyArrow 251) and **neck-and-neck with DuckDB on 3M** (547 vs 569), well ahead of PyArrow — and it
+does so in the **least memory of the fast tools** (~180–245 MB vs DuckDB's 213–494 and PyArrow's
+388–814), still bounded so it never grows with input size.
+
+| Tool (all cores)            | Throughput 1M | Throughput 3M | Peak mem 1M | Peak mem 3M |
+| --------------------------- | ------------- | ------------- | ----------- | ----------- |
+| **riffle** (`--threads 8`)  | **386 MB/s**  | 547 MB/s      | **181 MB**  | **244 MB**  |
+| duckdb                      | 340 MB/s      | **569 MB/s**  | 213 MB      | 494 MB      |
+| pyarrow                     | 251 MB/s      | 397 MB/s      | 388 MB      | 814 MB      |
+| pandas                      | 34 MB/s       | 40 MB/s       | 1441 MB     | 4183 MB     |
 
 ### Scaling with `--threads`
 
 ![Throughput vs threads](docs/img/bench_threads.png)
 
-Throughput scales with cores: **~115 → 200 → 318 → 384 MB/s** at 1 → 2 → 4 → 8 threads on the
+Throughput scales with cores: **~117 → 205 → 308 → 369 MB/s** at 1 → 2 → 4 → 8 threads on the
 120 MB dataset. Output is **byte-identical and deterministic** regardless of thread count (workers
 parse+build chunks; a single writer emits batches in input order). The cost is memory: each extra
 in-flight chunk adds a bounded amount, so peak RSS grows modestly with `--threads` but never with
 input size.
 
-### Where Riffle wins / where it doesn't
-
-| Criterion                          | Riffle                | duckdb | pyarrow | pandas |
-| ---------------------------------- | --------------------- | ------ | ------- | ------ |
-| Peak memory, flat with input size  | ✅ ~80 MB, constant    | ⚠️ grows | ❌ grows | ❌ huge |
-| Converts files larger than RAM     | ✅                     | ⚠️      | ❌       | ❌      |
-| Raw throughput (1 thread)          | ⚠️ ~115 MB/s           | ✅      | ✅       | ❌      |
-| Raw throughput (`--threads 8`)     | ✅ ~410–550 MB/s       | ✅      | ✅       | ❌      |
-| Single static binary, no runtime   | ✅                     | ❌ (lib) | ❌ (lib) | ❌ (lib) |
-
-**Bottom line:** if you need raw speed on data that fits in memory, DuckDB is excellent. If you
-need to convert **arbitrarily large logs in bounded memory** from a single dependency-free
-binary, that is exactly what Riffle is for.
+**Bottom line:** per core, DuckDB and PyArrow parse JSON faster than Riffle. But with `--threads`
+Riffle **matches or beats them on throughput** while being the only tool that stays in **bounded
+memory** — and it ships as a single dependency-free binary. DuckDB remains excellent for in-memory
+SQL analytics; for converting **arbitrarily large logs to Parquet with predictable memory** (in one
+thread for the smallest footprint, or many for top speed), Riffle is purpose-built.
 
 ## Status
 

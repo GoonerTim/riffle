@@ -237,8 +237,11 @@ struct Chunk {
     std::vector<std::string> lines;
 };
 
+// Workers fill native column buffers only; all Arrow array construction happens
+// later on the single writer thread, since Arrow builders/pool are not safe to
+// drive concurrently across threads.
 struct ChunkResult {
-    std::optional<RecordBatch> batch;
+    BatchBuilder builder;
     std::vector<ParseError> errors;
     std::size_t rows_read = 0;
     std::size_t rows_skipped = 0;
@@ -268,7 +271,7 @@ ChunkResult process_chunk(const Config& cfg, const InferredSchema& schema, const
                 make_ParseError({.line_no = line_no, .reason = ok.error(), .raw = line}));
         }
     }
-    if (auto built = build_batch(builder)) res.batch = std::move(*built);
+    res.builder = std::move(builder);
     return res;
 }
 
@@ -378,14 +381,20 @@ private:
         stats_.rows_read += res.rows_read;
         stats_.rows_skipped += res.rows_skipped;
         for (auto& error : res.errors) stats_.errors.push_back(std::move(error));
-        if (!res.batch || res.batch->n_rows == 0) return;
+        if (res.builder.n_rows == 0) return;
         if (auto ok = ensure_writer(); !ok) {
             result = ok;
             abort();
             return;
         }
-        stats_.rows_written += res.batch->n_rows;
-        if (auto ok = writer_->write(*res.batch); !ok) {
+        auto batch = build_batch(res.builder);
+        if (!batch) {
+            result = std::unexpected(batch.error());
+            abort();
+            return;
+        }
+        stats_.rows_written += batch->n_rows;
+        if (auto ok = writer_->write(*batch); !ok) {
             result = ok;
             abort();
         }

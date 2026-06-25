@@ -1,15 +1,18 @@
 #!/usr/bin/env python3
 """Benchmark Riffle against common JSON-lines -> Parquet one-liners.
 
-Measures wall-clock time and peak resident memory (RSS) by running each tool as
-a subprocess and polling its memory while it converts the same dataset. Results
-are written to bench/results.json for plotting.
+Every tool is measured twice for a fair comparison: **single-threaded** (one core
+each) and **multi-threaded** (all cores). DuckDB is pinned with `SET threads`,
+PyArrow via ReadOptions(use_threads)+set_cpu_count, Riffle via `--threads`.
+pandas has no parallel JSON reader, so it is shown as-is in both groups.
+
+Wall-clock time and peak resident memory (RSS) are measured by running each tool
+as a subprocess and polling its memory. Results go to bench/results.json.
 
 Usage: python bench/bench.py
 """
 import json
 import os
-import statistics
 import subprocess
 import sys
 import time
@@ -27,9 +30,8 @@ DATASETS = [
     ("3M rows (359 MB)", ROOT / "bench" / "data" / "bench3m.jsonl"),
 ]
 REPEATS = 3
+THREADS = 8  # "all cores" target for the multi-threaded group
 OUT = ROOT / "tmp_bench_out.parquet"
-# Show Riffle both single-threaded and multi-threaded (DuckDB/PyArrow use all cores).
-THREADS = 8
 
 
 def riffle_cmd(src: str, threads: int) -> list[str]:
@@ -41,21 +43,33 @@ def py_cmd(code: str, src: str) -> list[str]:
     return [PYTHON, "-c", code.replace("SRC", repr(src)).replace("OUT", repr(str(OUT)))]
 
 
-TOOLS = {
-    "riffle (1t)": lambda src: riffle_cmd(src, 1),
-    f"riffle ({THREADS}t)": lambda src: riffle_cmd(src, THREADS),
-    "duckdb": lambda src: py_cmd(
-        "import duckdb; duckdb.sql(\"COPY (SELECT * FROM "
-        "read_json_auto(SRC, format='newline_delimited')) TO OUT (FORMAT parquet)\")",
-        src,
-    ),
-    "pyarrow": lambda src: py_cmd(
-        "import pyarrow.json as j, pyarrow.parquet as p; p.write_table(j.read_json(SRC), OUT)",
-        src,
-    ),
-    "pandas": lambda src: py_cmd(
-        "import pandas as pd; pd.read_json(SRC, lines=True).to_parquet(OUT)", src
-    ),
+def duckdb_code(threads: int) -> str:
+    pragma = f"SET threads TO {threads}; " if threads else ""
+    return ('import duckdb; duckdb.sql("' + pragma + "COPY (SELECT * FROM "
+            "read_json_auto(SRC, format='newline_delimited')) TO OUT (FORMAT parquet)\")")
+
+
+def pyarrow_code(use_threads: bool) -> str:
+    setup = "" if use_threads else "pa.set_cpu_count(1); "
+    return ("import pyarrow as pa, pyarrow.json as j, pyarrow.parquet as p; " + setup
+            + f"p.write_table(j.read_json(SRC, read_options=j.ReadOptions(use_threads={use_threads})), OUT)")
+
+
+PANDAS = "import pandas as pd; pd.read_json(SRC, lines=True).to_parquet(OUT)"
+
+MODES = {
+    "single": {
+        "riffle": lambda s: riffle_cmd(s, 1),
+        "duckdb": lambda s: py_cmd(duckdb_code(1), s),
+        "pyarrow": lambda s: py_cmd(pyarrow_code(False), s),
+        "pandas": lambda s: py_cmd(PANDAS, s),
+    },
+    "multi": {
+        "riffle": lambda s: riffle_cmd(s, THREADS),
+        "duckdb": lambda s: py_cmd(duckdb_code(0), s),
+        "pyarrow": lambda s: py_cmd(pyarrow_code(True), s),
+        "pandas": lambda s: py_cmd(PANDAS, s),
+    },
 }
 
 
@@ -81,20 +95,14 @@ def run_once(cmd: list[str]) -> tuple[float, float]:
     return time.perf_counter() - start, peak / (1024 * 1024)
 
 
-def bench_tool(name: str, make_cmd, src: Path, size_mb: float) -> dict:
+def bench_tool(make_cmd, src: Path, size_mb: float) -> tuple[float, float]:
     times, mems = [], []
     for _ in range(REPEATS):
         wall, mem = run_once(make_cmd(str(src)))
         times.append(wall)
         mems.append(mem)
     best = min(times)
-    return {
-        "tool": name,
-        "seconds": round(statistics.median(times), 3),
-        "seconds_best": round(best, 3),
-        "throughput_mb_s": round(size_mb / best, 1),
-        "peak_rss_mb": round(max(mems), 1),
-    }
+    return round(size_mb / best, 1), round(max(mems), 1)
 
 
 def main() -> None:
@@ -103,12 +111,12 @@ def main() -> None:
     results = []
     for label, src in DATASETS:
         size_mb = src.stat().st_size / (1024 * 1024)
-        for name, make_cmd in TOOLS.items():
-            row = bench_tool(name, make_cmd, src, size_mb)
-            row["dataset"] = label
-            results.append(row)
-            print(f"{label:18} {name:8} {row['seconds']:6.2f}s "
-                  f"{row['throughput_mb_s']:7.1f} MB/s  peak {row['peak_rss_mb']:7.1f} MB")
+        for mode, tools in MODES.items():
+            for name, make_cmd in tools.items():
+                mbps, peak = bench_tool(make_cmd, src, size_mb)
+                results.append({"tool": name, "mode": mode, "dataset": label,
+                                "throughput_mb_s": mbps, "peak_rss_mb": peak})
+                print(f"{label:18} {mode:6} {name:8} {mbps:7.1f} MB/s  peak {peak:7.1f} MB")
     (ROOT / "bench" / "results.json").write_text(json.dumps(results, indent=2))
     if OUT.exists():
         OUT.unlink()
