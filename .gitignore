@@ -2,6 +2,7 @@
 /build/
 /build-release/
 /build-prof/
+/build-notest/
 /cmake-build-*/
 *.o
 *.a
